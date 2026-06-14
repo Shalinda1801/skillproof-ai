@@ -1,3 +1,4 @@
+import { runAiAssessmentForSubmission } from "../services/aiAssessment.service.js";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { Challenge } from "../models/Challenge.js";
@@ -94,6 +95,17 @@ export const createSubmission = asyncHandler(async (req, res) => {
     status: "SUBMITTED",
   });
 
+  let aiAssessment = null;
+
+  try {
+    aiAssessment = await runAiAssessmentForSubmission({
+      submissionId: submission._id,
+      requestedBy: null,
+    });
+  } catch (error) {
+    console.error(`Automatic AI assessment failed: ${error.message}`);
+  }
+
   const populatedSubmission = await Submission.findById(submission._id)
     .populate("challengeId", "title difficulty deadlineDays skillId")
     .populate("studentId", "name email role");
@@ -102,6 +114,7 @@ export const createSubmission = asyncHandler(async (req, res) => {
     success: true,
     message: "Submission created successfully.",
     submission: populatedSubmission,
+    aiAssessment,
   });
 });
 

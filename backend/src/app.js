@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import skillRoutes from "./routes/skill.routes.js";
 import challengeRoutes from "./routes/challenge.routes.js";
 import submissionRoutes from "./routes/submission.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import { errorHandler, notFound } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/skills", skillRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/submissions", submissionRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
