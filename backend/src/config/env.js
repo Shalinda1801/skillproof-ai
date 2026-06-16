@@ -17,6 +17,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
+  appBaseUrl: process.env.APP_BASE_URL || "http://localhost:5173",
 
   aiProvider: process.env.AI_PROVIDER || "mock",
   geminiApiKey: process.env.GEMINI_API_KEY || "",
