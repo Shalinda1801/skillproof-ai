@@ -7,9 +7,8 @@ import {
   RefreshCcw,
   ShieldCheck,
   Sparkles,
-  Users,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { adminApi } from "../api/adminApi";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,12 +21,47 @@ const AdminDashboard = () => {
   const [reviewNote, setReviewNote] = useState(
     "Submission approved after reviewing AI assessment and project evidence."
   );
+
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const loadAdminData = useCallback(async () => {
+ const loadAdminData = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const [submissionData, certificateData] = await Promise.all([
+      adminApi.getAllSubmissions(),
+      adminApi.getAllCertificates(),
+    ]);
+
+    const loadedSubmissions = submissionData.submissions || [];
+
+    setSubmissions(loadedSubmissions);
+    setCertificates(certificateData.certificates || []);
+
+    setSelectedSubmission((currentSubmission) => {
+      if (!currentSubmission) {
+        return loadedSubmissions[0] || null;
+      }
+
+      const updatedSelectedSubmission = loadedSubmissions.find(
+        (submission) => submission._id === currentSubmission._id
+      );
+
+      return updatedSelectedSubmission || loadedSubmissions[0] || null;
+    });
+  } catch (err) {
+    setError(err.message || "Failed to load admin data.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  const fetchInitialAdminData = async () => {
     try {
       setLoading(true);
       setError("");
@@ -38,22 +72,20 @@ const AdminDashboard = () => {
       ]);
 
       const loadedSubmissions = submissionData.submissions || [];
+
       setSubmissions(loadedSubmissions);
       setCertificates(certificateData.certificates || []);
-
-      if (loadedSubmissions.length > 0 && !selectedSubmission) {
-        setSelectedSubmission(loadedSubmissions[0]);
-      }
+      setSelectedSubmission(loadedSubmissions[0] || null);
     } catch (err) {
       setError(err.message || "Failed to load admin data.");
     } finally {
       setLoading(false);
     }
-  }, [selectedSubmission]);
+  };
 
-  useEffect(() => {
-    loadAdminData();
-  }, [loadAdminData]);
+  fetchInitialAdminData();
+}, []);
+
 
   const handleRunAi = async () => {
     if (!selectedSubmission) return;
@@ -172,13 +204,16 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <button onClick={logout} className="secondary-btn inline-flex items-center gap-2">
+          <button
+            onClick={logout}
+            className="secondary-btn inline-flex items-center gap-2"
+          >
             <LogOut size={18} />
             Logout
           </button>
         </nav>
 
-        <section className="glass-card pro-rounded-[2rem] p-8">
+        <section className="glass-card pro-card rounded-[2rem] p-8">
           <p className="text-sm font-bold uppercase tracking-[0.3em] text-purple-300">
             Verifier workspace
           </p>
@@ -193,10 +228,12 @@ const AdminDashboard = () => {
 
         <section className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {statCards.map((card) => (
-            <div key={card.title} className="glass-card rounded-3xl p-6">
+            <div key={card.title} className="glass-card pro-card rounded-3xl p-6">
               <card.icon className="mb-5 text-purple-300" size={34} />
               <h2 className="text-xl font-black">{card.title}</h2>
-              <p className="mt-2 text-4xl font-black gradient-text">{card.value}</p>
+              <p className="mt-2 text-4xl font-black gradient-text">
+                {card.value}
+              </p>
             </div>
           ))}
         </section>
@@ -255,12 +292,14 @@ const AdminDashboard = () => {
                           {submission.challengeId?.title || "Challenge"}
                         </h3>
                         <p className="mt-2 text-sm leading-6 text-slate-400">
-                          {submission.studentId?.name} • {submission.studentId?.email}
+                          {submission.studentId?.name} •{" "}
+                          {submission.studentId?.email}
                         </p>
                         <p className="mt-1 text-sm text-slate-500">
                           {submission.challengeId?.skillId?.title}
                         </p>
                       </div>
+
                       <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">
                         {submission.status}
                       </span>

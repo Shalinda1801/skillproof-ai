@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
+import HeroCredentialVisual from "../components/ui/HeroCredentialVisual";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
@@ -77,7 +78,7 @@ const Home = () => {
       <AnimatedBackground />
 <main className="relative z-10 overflow-hidden text-slate-100">
       
-        <div className="video-feel-bg" />
+        
 
         {/* HERO */}
         <section className="hero-grid relative px-6 py-24 lg:py-32">
@@ -128,48 +129,14 @@ const Home = () => {
             </motion.div>
 
             <motion.div
-              className="relative"
-              initial={{ opacity: 0, scale: 0.92, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-            >
-              <div className="absolute -left-12 top-12 h-44 w-44 rounded-full bg-blue-500/30 blur-3xl glow-orb" />
-              <div className="absolute -right-10 bottom-0 h-52 w-52 rounded-full bg-purple-500/30 blur-3xl glow-orb" />
-<div className="premium-card hero-3d-card shine-card relative rounded-[2.5rem] p-7">            
-               <div className="hero-inner-card rounded-[2rem] p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-slate-400">Certificate Score</p>
-                      <p className="mt-2 text-6xl font-black gradient-text">
-                        90%
-                      </p>
-                    </div>
-                    <div className="grid h-20 w-20 place-items-center rounded-3xl bg-emerald-400/10 text-emerald-300">
-                      <ShieldCheck size={42} />
-                    </div>
-                  </div>
+  className="relative"
+  initial={{ opacity: 0, scale: 0.92, y: 30 }}
+  animate={{ opacity: 1, scale: 1, y: 0 }}
+  transition={{ delay: 0.2, duration: 0.8 }}
+>
+  <HeroCredentialVisual />
+</motion.div>
 
-                  <div className="mt-8 space-y-4">
-                    {[
-                      ["GitHub Evidence", "Submitted"],
-                      ["AI Assessment", "Completed"],
-                      ["Verifier Review", "Approved"],
-                      ["QR Certificate", "Generated"],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4"
-                      >
-                        <span className="text-slate-300">{label}</span>
-                        <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-sm font-bold text-emerald-300">
-                          {value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </div>
         </section>
 
@@ -183,7 +150,7 @@ const Home = () => {
               </h2>
             </div>
 
-            <div className="premium-card pro-rounded-[2rem] p-8">
+            <div className="premium-card pro-card rounded-[2rem] p-8">
               <p className="text-lg leading-8 text-slate-300">
                 Many students have projects, but companies need trusted proof.
                 SkillProof AI connects project evidence, AI feedback, admin

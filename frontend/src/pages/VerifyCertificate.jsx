@@ -20,18 +20,41 @@ const VerifyCertificate = () => {
   const [loading, setLoading] = useState(Boolean(certificateId));
   const [error, setError] = useState("");
 
-  const verifyCertificate = async (id) => {
-    if (!id.trim()) {
-      setError("Please enter a certificate ID.");
-      return;
-    }
+ const handleVerifyCertificate = async (id) => {
+  const trimmedId = String(id || "").trim();
+
+  if (!trimmedId) {
+    setError("Please enter a certificate ID.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError("");
+    setCertificateData(null);
+
+    const response = await certificateApi.verifyCertificate(trimmedId);
+    setCertificateData(response);
+  } catch (err) {
+    setError(err.message || "Certificate verification failed.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  const verifyFromUrl = async () => {
+    const trimmedId = String(certificateId || "").trim();
+
+    if (!trimmedId) return;
 
     try {
+      setInputId(trimmedId);
       setLoading(true);
       setError("");
       setCertificateData(null);
 
-      const response = await certificateApi.verifyCertificate(id.trim());
+      const response = await certificateApi.verifyCertificate(trimmedId);
       setCertificateData(response);
     } catch (err) {
       setError(err.message || "Certificate verification failed.");
@@ -40,14 +63,10 @@ const VerifyCertificate = () => {
     }
   };
 
-  useEffect(() => {
-    if (certificateId) {
-      verifyCertificate(certificateId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [certificateId]);
+  verifyFromUrl();
+}, [certificateId]);
 
-  const certificate = certificateData?.certificate;
+const certificate = certificateData?.certificate;
 
   return (
     <main className="min-h-screen px-6 py-6">
@@ -68,13 +87,15 @@ const VerifyCertificate = () => {
           </Link>
         </nav>
 
-        <section className="glass-card pro-rounded-[2rem] p-8">
+        <section className="glass-card pro-card rounded-[2rem] p-8">
           <p className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-300">
             Public verifier
           </p>
+
           <h1 className="mt-3 text-4xl font-black">
             Verify a QR certificate instantly.
           </h1>
+
           <p className="mt-4 max-w-3xl text-slate-400">
             Enter a SkillProof certificate ID to check whether the certificate is
             valid, revoked, or not found.
@@ -87,12 +108,17 @@ const VerifyCertificate = () => {
               onChange={(event) => setInputId(event.target.value)}
               placeholder="Example: CERT-2026-000001"
             />
+
             <button
-              onClick={() => verifyCertificate(inputId)}
+              onClick={() => handleVerifyCertificate(inputId)}
               className="primary-btn inline-flex items-center justify-center gap-2"
               disabled={loading}
             >
-              {loading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
+              {loading ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <Search size={18} />
+              )}
               Verify
             </button>
           </div>
@@ -120,17 +146,18 @@ const VerifyCertificate = () => {
         )}
 
         {certificate && (
-          <section className="mt-8 glass-card rounded-[2rem] p-8">
+          <section className="mt-8 glass-card pro-card rounded-[2rem] p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-300">
                   <CheckCircle2 size={18} />
-                  {certificateData.result}
+                  {certificateData?.result || "VALID"}
                 </div>
 
                 <h2 className="mt-5 text-4xl font-black">
                   Certificate is verified.
                 </h2>
+
                 <p className="mt-3 text-slate-400">
                   Certificate ID: {certificate.certificateId}
                 </p>
