@@ -9,6 +9,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import AnimatedBackground from "../components/ui/AnimatedBackground";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
@@ -73,8 +74,9 @@ const Home = () => {
   return (
     <>
       <Navbar />
-
-      <main className="relative overflow-hidden text-slate-100">
+      <AnimatedBackground />
+<main className="relative z-10 overflow-hidden text-slate-100">
+      
         <div className="video-feel-bg" />
 
         {/* HERO */}
@@ -115,7 +117,7 @@ const Home = () => {
                 {[
                   ["AI", "Assessment"],
                   ["QR", "Verify"],
-                  ["MERN", "Project"],
+                   ["360°", "Skill Proof"],
                 ].map(([value, label]) => (
                   <div key={label} className="premium-card rounded-3xl p-5">
                     <p className="text-3xl font-black gradient-text">{value}</p>
@@ -133,9 +135,8 @@ const Home = () => {
             >
               <div className="absolute -left-12 top-12 h-44 w-44 rounded-full bg-blue-500/30 blur-3xl glow-orb" />
               <div className="absolute -right-10 bottom-0 h-52 w-52 rounded-full bg-purple-500/30 blur-3xl glow-orb" />
-
-              <div className="premium-card float-3d relative rounded-[2.5rem] p-7">
-                <div className="rounded-[2rem] border border-slate-700/70 bg-slate-950/70 p-6">
+<div className="premium-card hero-3d-card shine-card relative rounded-[2.5rem] p-7">            
+               <div className="hero-inner-card rounded-[2rem] p-6">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm text-slate-400">Certificate Score</p>
@@ -182,7 +183,7 @@ const Home = () => {
               </h2>
             </div>
 
-            <div className="premium-card rounded-[2rem] p-8">
+            <div className="premium-card pro-rounded-[2rem] p-8">
               <p className="text-lg leading-8 text-slate-300">
                 Many students have projects, but companies need trusted proof.
                 SkillProof AI connects project evidence, AI feedback, admin
@@ -216,7 +217,7 @@ const Home = () => {
               </h2>
               <p className="max-w-xl leading-7 text-slate-400">
                 The platform combines AI, human review, certificates, and public
-                verification in one MERN stack application.
+                verification in one modern skill verification platform.
               </p>
             </div>
 
@@ -224,7 +225,7 @@ const Home = () => {
               {services.map((item, index) => (
                 <motion.div
                   key={item.title}
-                  className="premium-card card-hover rounded-[2rem] p-6"
+                  className="premium-card card-hover tilt-card shine-card rounded-[2rem] p-6"
                   initial={{ opacity: 0, y: 18 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

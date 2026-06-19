@@ -6,6 +6,10 @@ import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import VerifyCertificate from "./pages/VerifyCertificate";
+import Pricing from "./pages/Pricing";
+import Checkout from "./pages/Checkout";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
 
 const App = () => {
   return (
@@ -38,6 +42,12 @@ const App = () => {
          <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
 <Route path="/verify" element={<VerifyCertificate />} />
 
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/checkout/:planId" element={<Checkout />} />
+      <Route path="/payment-success" element={<PaymentSuccess />} />
+      <Route path="/payment-failed" element={<PaymentFailed />} />
+      
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -68,7 +68,7 @@ const VerifyCertificate = () => {
           </Link>
         </nav>
 
-        <section className="glass-card rounded-[2rem] p-8">
+        <section className="glass-card pro-rounded-[2rem] p-8">
           <p className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-300">
             Public verifier
           </p>

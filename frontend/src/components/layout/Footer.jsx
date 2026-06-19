@@ -5,37 +5,35 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const footerLinks = {
-  Platform: [
-    { label: "Home", path: "/" },
-    { label: "Verify Certificate", path: "/verify" },
-    { label: "Student Login", path: "/login" },
-    { label: "Create Account", path: "/register" },
-  ],
   Product: [
+    { label: "Skill Verification", path: "/#services" },
     { label: "AI Assessment", path: "/#services" },
-    { label: "Verifier Workflow", path: "/#services" },
-    { label: "QR Certificates", path: "/#gallery" },
-    { label: "Contact", path: "/#contact" },
+    { label: "Certificate Verification", path: "/verify" },
+    { label: "Pricing", path: "/pricing" },
   ],
-  Demo: [
-    { label: "Admin Dashboard", path: "/login" },
-    { label: "Student Dashboard", path: "/login" },
+  Solutions: [
+    { label: "For Students", path: "/register" },
+    { label: "For Verifiers", path: "/login" },
+    { label: "For Companies", path: "/verify" },
     { label: "Demo Certificate", path: "/verify/CERT-2026-000001" },
+  ],
+  Resources: [
+    { label: "About", path: "/#about" },
+    { label: "How It Works", path: "/#services" },
+    { label: "Platform Preview", path: "/#gallery" },
+    { label: "Contact", path: "/#contact" },
   ],
 };
 
-const techStack = [
-  { label: "React Frontend", icon: Sparkles },
-  { label: "Node + Express APIs", icon: ClipboardCheck },
-  { label: "MongoDB Database", icon: Search },
-  { label: "JWT Role Auth", icon: ShieldCheck },
-  { label: "AI Assessment", icon: Brain },
-  { label: "QR Verification", icon: Award },
+const capabilities = [
+  { label: "AI Review", icon: Brain },
+  { label: "Human Approval", icon: ClipboardCheck },
+  { label: "QR Verification", icon: Search },
+  { label: "Trusted Certificates", icon: Award },
 ];
 
 const Footer = () => {
@@ -56,29 +54,29 @@ const Footer = () => {
                   SkillProof AI
                 </p>
                 <p className="text-sm text-slate-400">
-                  AI-powered skill verification platform
+                  Verified skills. Trusted credentials.
                 </p>
               </div>
             </Link>
 
             <p className="mt-6 max-w-md leading-8 text-slate-400">
-              A professional MERN stack platform for student skill verification,
-              AI-assisted assessment, verifier approval, and QR-based public
-              certificate validation.
+              SkillProof AI helps learners transform real project work into
+              verifiable digital credentials that institutions, recruiters, and
+              companies can trust.
             </p>
 
             <div className="mt-6 grid gap-3 text-sm text-slate-400">
               <p className="flex items-center gap-3">
-                <Brain size={17} className="text-blue-300" />
-                AI-powered assessment workflow
+                <Sparkles size={17} className="text-blue-300" />
+                Smart review workflow for skill evidence
               </p>
               <p className="flex items-center gap-3">
                 <ShieldCheck size={17} className="text-purple-300" />
-                Role-based protected MERN application
+                Secure role-based credential approval
               </p>
               <p className="flex items-center gap-3">
                 <Award size={17} className="text-emerald-300" />
-                Public QR certificate verification
+                Public certificate verification for employers
               </p>
             </div>
           </div>
@@ -104,15 +102,15 @@ const Footer = () => {
         <div className="mt-12 rounded-[2rem] border border-slate-800 bg-slate-900/40 p-6">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
             <div>
-              <h3 className="text-lg font-black">Technology Stack</h3>
+              <h3 className="text-lg font-black">Platform Capabilities</h3>
               <p className="mt-2 text-sm text-slate-400">
-                Built with modern MERN architecture, protected APIs, role-based
-                access, AI assessment, and QR certificate verification.
+                A complete credential workflow from evidence submission to
+                public certificate verification.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {techStack.map((item) => (
+              {capabilities.map((item) => (
                 <div
                   key={item.label}
                   className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-bold text-slate-300"
@@ -127,16 +125,15 @@ const Footer = () => {
 
         <div className="mt-10 flex flex-col justify-between gap-4 border-t border-slate-800 pt-6 text-sm text-slate-500 md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} SkillProof AI. MERN stack student skill
-            verification and micro-credential platform.
+            © {new Date().getFullYear()} SkillProof AI. All rights reserved.
           </p>
 
           <div className="flex flex-wrap gap-4">
             <Link to="/verify" className="hover:text-white">
               Verify Certificate
             </Link>
-            <Link to="/verify/CERT-2026-000001" className="hover:text-white">
-              Demo Certificate
+            <Link to="/pricing" className="hover:text-white">
+              Pricing
             </Link>
             <Link to="/login" className="hover:text-white">
               Login
