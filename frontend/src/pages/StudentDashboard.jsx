@@ -413,6 +413,21 @@ const StudentDashboard = () => {
                         <p className="mt-1 text-sm text-emerald-300">
                           Status: {certificate.status}
                         </p>
+                        <div className="mt-4 flex flex-wrap gap-3">
+  <a
+    href={`/certificate/${certificate.certificateId}`}
+    className="secondary-btn text-sm"
+  >
+    View Certificate
+  </a>
+
+  <a
+    href={`/verify/${certificate.certificateId}`}
+    className="secondary-btn text-sm"
+  >
+    Verify Publicly
+  </a>
+</div>
                       </div>
                     ))}
 

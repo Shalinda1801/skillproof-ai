@@ -604,3 +604,99 @@ select {
   transform-style: preserve-3d;
   animation: softFloatCard 5.5s ease-in-out infinite;
 }
+/* =========================
+   CERTIFICATE VIEW + PRINT
+========================= */
+
+.certificate-paper {
+  width: 1120px;
+  min-height: 790px;
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.45);
+}
+
+.certificate-border {
+  min-height: 746px;
+  border-radius: 22px;
+  border: 8px double rgba(30, 64, 175, 0.75);
+  padding: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.12), transparent 28%),
+    linear-gradient(135deg, #fffaf0, #ffffff);
+}
+
+.certificate-inner-border {
+  min-height: 700px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  padding: 42px;
+  position: relative;
+  overflow: hidden;
+}
+
+.certificate-inner-border::before {
+  content: "";
+  position: absolute;
+  inset: 32px;
+  border: 1px solid rgba(30, 64, 175, 0.18);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.certificate-inner-border::after {
+  content: "SkillProof AI";
+  position: absolute;
+  left: 50%;
+  top: 53%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  font-size: 96px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: rgba(15, 23, 42, 0.035);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.certificate-info-box {
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 22px;
+  padding: 18px;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #certificate-print-area,
+  #certificate-print-area * {
+    visibility: visible;
+  }
+
+  #certificate-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1120px !important;
+    min-height: 790px !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform-origin: top left;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+}

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
+import CertificateView from "./pages/CertificateView";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import StudentDashboard from "./pages/StudentDashboard";
@@ -30,6 +31,7 @@ const App = () => {
           </ProtectedRoute>
         }
       />
+      
 
       <Route
         path="/admin/dashboard"
@@ -40,8 +42,8 @@ const App = () => {
         }
       />
          <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
-<Route path="/verify" element={<VerifyCertificate />} />
-
+        <Route path="/verify" element={<VerifyCertificate />} />
+        <Route path="/certificate/:certificateId" element={<CertificateView />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/checkout/:planId" element={<Checkout />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
