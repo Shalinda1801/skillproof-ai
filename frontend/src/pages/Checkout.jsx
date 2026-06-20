@@ -154,15 +154,16 @@ const Checkout = () => {
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-4">
-                <Link to="/payment-success" className="primary-btn text-center">
-                  Simulate Successful Payment
-                </Link>
+           <div className="mt-6 grid gap-4">
+  <Link to="/payment-success" className="primary-btn text-center">
+    Pay Now
+  </Link>
 
-                <Link to="/payment-failed" className="secondary-btn text-center">
-                  Simulate Failed Payment
-                </Link>
-              </div>
+  <p className="text-center text-xs leading-6 text-slate-500">
+    Demo mode: this button simulates a successful payment. In production,
+    this will redirect to the real payment gateway.
+  </p>
+</div>
             </aside>
           </div>
         </section>
