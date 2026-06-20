@@ -560,3 +560,47 @@ select {
     transform: translateY(14px) rotate(-3deg);
   }
 }
+
+/* =========================
+   VERIFY CERTIFICATE PREMIUM UI
+========================= */
+
+.verify-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.35;
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.verify-result-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(52, 211, 153, 0.18), transparent 32%),
+    rgba(2, 6, 23, 0.88);
+  box-shadow:
+    0 35px 110px rgba(0, 0, 0, 0.4),
+    0 18px 70px rgba(16, 185, 129, 0.14);
+}
+
+.verify-result-card::after {
+  content: "";
+  position: absolute;
+  inset: -130%;
+  background: linear-gradient(
+    120deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.1),
+    transparent 65%
+  );
+  transform: rotate(25deg);
+  animation: heroShine 6s ease-in-out infinite;
+}
+
+.verify-badge-card {
+  transform-style: preserve-3d;
+  animation: softFloatCard 5.5s ease-in-out infinite;
+}
