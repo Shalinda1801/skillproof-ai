@@ -3,13 +3,12 @@ import {
   Award,
   Calendar,
   Download,
-  Printer,
   ShieldCheck,
   User,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
+import QRCode from "qrcode";
 import jsPDF from "jspdf";
 import { Link, useParams } from "react-router-dom";
 import { certificateApi } from "../api/certificateApi";
@@ -18,6 +17,8 @@ import AnimatedBackground from "../components/ui/AnimatedBackground";
 const CertificateView = () => {
   const { certificateId } = useParams();
   const certificateRef = useRef(null);
+const [downloading, setDownloading] = useState(false);
+  
   const [certificateData, setCertificateData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,41 +47,174 @@ const CertificateView = () => {
 
 const verifyUrl = `${clientUrl}/verify/${certificateId}`;
 
-  const handlePrint = () => {
-  window.print();
-};
-
+  
 const handleDownloadPdf = async () => {
-  const certificateElement = certificateRef.current;
+  try {
+    setDownloading(true);
 
-  if (!certificateElement) return;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+      width: 300,
+      margin: 2,
+    });
 
-  const canvas = await html2canvas(certificateElement, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#fffaf0",
-  });
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
 
-  const imageData = canvas.toDataURL("image/png");
+    const pageWidth = 297;
+    const pageHeight = 210;
 
-  const pdf = new jsPDF({
-    orientation: "landscape",
-    unit: "mm",
-    format: "a4",
-  });
+    // Background
+    pdf.setFillColor(255, 250, 240);
+    pdf.rect(0, 0, pageWidth, pageHeight, "F");
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+    // Border
+    pdf.setDrawColor(37, 99, 235);
+    pdf.setLineWidth(1.4);
+    pdf.rect(8, 8, pageWidth - 16, pageHeight - 16);
 
-  const imageWidth = pageWidth;
-  const imageHeight = (canvas.height * imageWidth) / canvas.width;
+    pdf.setDrawColor(124, 58, 237);
+    pdf.setLineWidth(0.6);
+    pdf.rect(12, 12, pageWidth - 24, pageHeight - 24);
 
-  const yPosition = imageHeight < pageHeight ? (pageHeight - imageHeight) / 2 : 0;
+    // Header
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text("SkillProof AI", 22, 25);
 
-  pdf.addImage(imageData, "PNG", 0, yPosition, imageWidth, imageHeight);
-  pdf.save(`${certificate.certificateId}.pdf`);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text("Verified Digital Credential", 22, 32);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(5, 150, 105);
+    pdf.text("VERIFIED CERTIFICATE", 230, 25);
+
+    pdf.setFontSize(8);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text(`ID: ${certificate.certificateId}`, 230, 32);
+
+    // Title
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text("CERTIFICATE OF ACHIEVEMENT", pageWidth / 2, 52, {
+      align: "center",
+    });
+
+    // Student name
+    pdf.setFont("times", "bold");
+    pdf.setFontSize(34);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(certificate.student?.name || "Student Name", pageWidth / 2, 75, {
+      align: "center",
+    });
+
+    // Description
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(12);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text(
+      "This certificate is proudly presented for successfully demonstrating practical project skills",
+      pageWidth / 2,
+      92,
+      { align: "center" }
+    );
+    pdf.text("and completing the verification process for", pageWidth / 2, 100, {
+      align: "center",
+    });
+
+    // Skill
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(24);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text(certificate.skill?.title || "Skill Certificate", pageWidth / 2, 118, {
+      align: "center",
+    });
+
+    // Info row
+    pdf.setDrawColor(203, 213, 225);
+    pdf.setFillColor(255, 255, 255);
+
+    const boxY = 132;
+    const boxW = 58;
+    const boxH = 24;
+    const gap = 8;
+    const startX = 24;
+
+    const infoBoxes = [
+      ["STUDENT EMAIL", certificate.student?.email || "N/A"],
+      ["SKILL LEVEL", certificate.assessment?.skillLevel || "Verified"],
+      ["SCORE", `${certificate.assessment?.score || 0}%`],
+      [
+        "ISSUED DATE",
+        certificate.issuedAt
+          ? new Date(certificate.issuedAt).toLocaleDateString()
+          : "N/A",
+      ],
+    ];
+
+    infoBoxes.forEach((box, index) => {
+      const x = startX + index * (boxW + gap);
+      pdf.roundedRect(x, boxY, boxW, boxH, 3, 3, "FD");
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(box[0], x + 4, boxY + 8);
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(15, 23, 42);
+
+      const valueLines = pdf.splitTextToSize(box[1], boxW - 8);
+      pdf.text(valueLines, x + 4, boxY + 16);
+    });
+
+    // Verification link
+    pdf.roundedRect(24, 168, 190, 18, 3, 3, "FD");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text("PUBLIC VERIFICATION LINK", 30, 176);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text(verifyUrl, 30, 182);
+
+    // QR code
+    pdf.addImage(qrDataUrl, "PNG", 232, 145, 38, 38);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text("SCAN TO VERIFY", 251, 190, { align: "center" });
+
+    // Signatures
+    pdf.setDrawColor(100, 116, 139);
+    pdf.line(35, 198, 95, 198);
+    pdf.line(120, 198, 190, 198);
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text("SkillProof AI Verifier", 35, 204);
+    pdf.text("Digital Credential Authority", 120, 204);
+
+    pdf.save(`${certificate.certificateId}.pdf`);
+  } catch (err) {
+    console.error("PDF download failed:", err);
+    alert("PDF download failed. Check browser console.");
+  } finally {
+    setDownloading(false);
+  }
 };
-
   if (loading) {
     return (
       <>
@@ -131,25 +265,20 @@ const handleDownloadPdf = async () => {
             </Link>
 
             <div className="flex gap-3">
-              <button
-                onClick={handlePrint}
-                className="secondary-btn inline-flex items-center gap-2"
-              >
-                <Printer size={18} />
-                Print
-              </button>
+           
 
-    <button
+  <button
   onClick={handleDownloadPdf}
-  className="primary-btn inline-flex items-center gap-2"
+  disabled={downloading}
+  className="primary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
 >
   <Download size={18} />
-  Download PDF
+  {downloading ? "Preparing PDF..." : "Download PDF"}
 </button>
             </div>
           </div>
 
-         <section
+<section
   ref={certificateRef}
   id="certificate-print-area"
   className="certificate-paper mx-auto bg-[#fffaf0] text-slate-950"
