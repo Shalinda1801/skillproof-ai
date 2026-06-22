@@ -5,6 +5,7 @@ import { VerificationLog } from "../models/VerificationLog.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateCertificateForSubmission } from "../services/certificate.service.js";
+import { sendCertificateEmail } from "../services/email.service.js";
 
 const revokeCertificateSchema = z.object({
   reason: z
@@ -42,10 +43,39 @@ export const generateCertificate = asyncHandler(async (req, res) => {
     generatedBy: req.user._id,
   });
 
+  const populatedCertificate = await Certificate.findById(certificate._id)
+    .populate("studentId", "name email")
+    .populate("skillId", "title level requiredTags")
+    .populate("challengeId", "title difficulty")
+    .populate("assessmentId", "score skillLevel certificateRecommendation");
+
+  let emailResult = {
+    skipped: true,
+    reason: "Email not attempted",
+  };
+
+  try {
+    emailResult = await sendCertificateEmail({
+      to: populatedCertificate?.studentId?.email,
+      studentName: populatedCertificate?.studentId?.name,
+      certificateId: populatedCertificate?.certificateId,
+      skillTitle: populatedCertificate?.skillId?.title,
+    });
+  } catch (emailError) {
+    console.error("Certificate email failed:", emailError.message);
+
+    emailResult = {
+      skipped: true,
+      reason: "Email sending failed",
+      error: emailError.message,
+    };
+  }
+
   res.status(201).json({
     success: true,
     message: "Certificate generated successfully.",
-    certificate,
+    certificate: populatedCertificate || certificate,
+    email: emailResult,
   });
 });
 
