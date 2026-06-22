@@ -24,6 +24,7 @@ const AdminDashboard = () => {
   const [reviewNote, setReviewNote] = useState(
     "Submission approved after reviewing AI assessment and project evidence."
   );
+  const [aiAssessmentResult, setAiAssessmentResult] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
@@ -62,6 +63,15 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+   
+    const getAssessmentFromResponse = (response) => {
+  return (
+    response?.assessment ||
+    response?.aiAssessment ||
+    response?.data?.assessment ||
+    response
+  );
+};
 
   useEffect(() => {
     const fetchInitialAdminData = async () => {
@@ -89,23 +99,28 @@ const AdminDashboard = () => {
     fetchInitialAdminData();
   }, []);
 
-  const handleRunAi = async () => {
-    if (!selectedSubmission) return;
+const handleRunAi = async () => {
+  if (!selectedSubmission) return;
 
-    try {
-      setActionLoading("ai");
-      setMessage("");
-      setError("");
+  try {
+    setActionLoading("ai");
+    setMessage("");
+    setError("");
+    setAiAssessmentResult(null);
 
-      await adminApi.runAiAssessment(selectedSubmission._id);
-      setMessage("AI assessment completed successfully.");
-      await loadAdminData();
-    } catch (err) {
-      setError(err.message || "AI assessment failed.");
-    } finally {
-      setActionLoading("");
-    }
-  };
+    const response = await adminApi.runAiAssessment(selectedSubmission._id);
+    const assessment = getAssessmentFromResponse(response);
+
+    setAiAssessmentResult(assessment);
+    setMessage("AI assessment completed successfully.");
+
+    await loadAdminData();
+  } catch (err) {
+    setError(err.message || "AI assessment failed.");
+  } finally {
+    setActionLoading("");
+  }
+};
 
   const handleApprove = async () => {
     if (!selectedSubmission) return;
@@ -305,7 +320,10 @@ const AdminDashboard = () => {
                     {submissions.map((submission) => (
                       <button
                         key={submission._id}
-                        onClick={() => setSelectedSubmission(submission)}
+                        onClick={() => {
+  setSelectedSubmission(submission);
+  setAiAssessmentResult(null);
+}}
                         className={`w-full rounded-3xl border p-5 text-left transition ${
                           selectedSubmission?._id === submission._id
                             ? "border-purple-400/70 bg-purple-500/10"
@@ -404,6 +422,73 @@ const AdminDashboard = () => {
                             "No explanation provided."}
                         </p>
                       </div>
+                         
+                         {aiAssessmentResult && (
+  <div className="mt-5 rounded-3xl border border-purple-400/30 bg-purple-500/10 p-5">
+    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div>
+        <p className="text-sm font-bold uppercase tracking-[0.25em] text-purple-300">
+          AI Assessment Result
+        </p>
+
+        <h4 className="mt-2 text-2xl font-black">
+          {aiAssessmentResult.score ?? 0}% Score
+        </h4>
+
+        <p className="mt-2 text-sm text-slate-300">
+          Skill Level:{" "}
+          <span className="font-bold text-blue-300">
+            {aiAssessmentResult.skillLevel || "N/A"}
+          </span>
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200">
+        Recommendation:{" "}
+        {aiAssessmentResult.certificateRecommendation || "NEEDS_REVIEW"}
+      </div>
+    </div>
+
+    <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+        <h5 className="font-black text-emerald-300">Strengths</h5>
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+          {(aiAssessmentResult.strengths || []).map((item, index) => (
+            <li key={index}>• {item}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+        <h5 className="font-black text-amber-300">Weaknesses</h5>
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+          {(aiAssessmentResult.weaknesses || []).map((item, index) => (
+            <li key={index}>• {item}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+        <h5 className="font-black text-blue-300">Improvements</h5>
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+          {(aiAssessmentResult.improvements || []).map((item, index) => (
+            <li key={index}>• {item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+      <span className="rounded-full bg-slate-900 px-3 py-1">
+        Provider: {aiAssessmentResult.provider || "MOCK/GEMINI"}
+      </span>
+
+      <span className="rounded-full bg-slate-900 px-3 py-1">
+        Model: {aiAssessmentResult.model || "N/A"}
+      </span>
+    </div>
+  </div>
+)}
 
                       <div className="mt-5">
                         <label className="mb-2 block text-sm font-semibold text-slate-300">
