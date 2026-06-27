@@ -2,15 +2,49 @@ import {
   Award,
   CheckCircle2,
   Download,
+  Loader2,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
 import Footer from "../components/layout/Footer";
 import Navbar from "../components/layout/Navbar";
+import { paymentApi } from "../api/paymentApi";
 
 const PaymentSuccess = () => {
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get("order_id");
+
+  const [payment, setPayment] = useState(null);
+  const [loading, setLoading] = useState(Boolean(orderId));
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadPayment = async () => {
+      if (!orderId) return;
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await paymentApi.getPaymentByOrderId(orderId);
+        setPayment(data.payment);
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Failed to load payment status."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPayment();
+  }, [orderId]);
+
   return (
     <>
       <AnimatedBackground />
@@ -25,31 +59,60 @@ const PaymentSuccess = () => {
 
             <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-bold uppercase tracking-[0.2em] text-emerald-200">
               <Sparkles size={16} />
-              Payment completed
+              Returned from payment
             </div>
 
             <h1 className="mt-6 text-5xl font-black leading-tight">
-              Your certificate payment was{" "}
+              Your payment return was{" "}
               <span className="gradient-text">successful.</span>
             </h1>
 
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-400">
-              Your payment has been recorded successfully. In the real gateway
-              version, this page will show after payment confirmation from the
-              payment provider.
+              PayHere redirected you back to SkillProof AI. Final paid status is
+              confirmed by the backend notification callback.
             </p>
+
+            {loading && (
+              <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-2xl bg-slate-950/60 px-5 py-3 text-slate-300">
+                <Loader2 className="animate-spin" size={18} />
+                Checking payment status...
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200">
+                {error}
+              </div>
+            )}
+
+            {payment && (
+              <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/50 p-5 text-left">
+                <p className="text-sm text-slate-400">Order ID</p>
+                <p className="mt-1 font-black">{payment.orderId}</p>
+
+                <p className="mt-4 text-sm text-slate-400">Payment Status</p>
+                <p className="mt-1 font-black text-emerald-300">
+                  {payment.status}
+                </p>
+
+                <p className="mt-4 text-sm text-slate-400">Amount</p>
+                <p className="mt-1 font-black">
+                  {payment.currency} {payment.amount}
+                </p>
+              </div>
+            )}
 
             <div className="mt-8 grid gap-5 md:grid-cols-3">
               {[
                 {
                   icon: ShieldCheck,
-                  title: "Payment verified",
-                  text: "Transaction status completed",
+                  title: "Payment returned",
+                  text: "Checkout flow completed",
                 },
                 {
                   icon: Award,
-                  title: "Certificate ready",
-                  text: "Credential flow unlocked",
+                  title: "Certificate",
+                  text: "Credential stays available",
                 },
                 {
                   icon: Download,
@@ -75,11 +138,8 @@ const PaymentSuccess = () => {
                 Go to Student Dashboard
               </Link>
 
-              <Link
-                to="/verify/CERT-2026-000001"
-                className="secondary-btn text-center"
-              >
-                View Demo Certificate
+              <Link to="/pricing" className="secondary-btn text-center">
+                Back to Pricing
               </Link>
             </div>
           </div>

@@ -5,12 +5,15 @@ import {
   RefreshCcw,
   ShieldCheck,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
 import Footer from "../components/layout/Footer";
 import Navbar from "../components/layout/Navbar";
 
 const PaymentFailed = () => {
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get("order_id");
+
   return (
     <>
       <AnimatedBackground />
@@ -35,8 +38,14 @@ const PaymentFailed = () => {
 
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-400">
               The transaction was cancelled, failed, or not confirmed. You can
-              retry the checkout or return to pricing and choose another plan.
+              retry the checkout from your Student Dashboard.
             </p>
+
+            {orderId && (
+              <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
+                Order ID: <span className="font-bold">{orderId}</span>
+              </div>
+            )}
 
             <div className="mt-8 rounded-[2rem] border border-slate-800 bg-slate-950/50 p-6 text-left">
               <h2 className="flex items-center gap-3 text-xl font-black">
@@ -45,19 +54,19 @@ const PaymentFailed = () => {
               </h2>
 
               <div className="mt-5 space-y-4 text-slate-400">
-                <p>• No certificate payment is recorded for this attempt.</p>
-                <p>• You can safely try again from the checkout page.</p>
-                <p>• In a real gateway, failed payment details come from the payment provider.</p>
+                <p>• No paid certificate access is recorded for this attempt.</p>
+                <p>• You can safely try again from the dashboard.</p>
+                <p>• The backend only marks payments as PAID after PayHere confirmation.</p>
               </div>
             </div>
 
             <div className="mt-9 grid gap-4 md:grid-cols-2">
               <Link
-                to="/checkout/pro-certificate"
+                to="/student/dashboard"
                 className="primary-btn inline-flex justify-center gap-2 text-center"
               >
                 <RefreshCcw size={18} />
-                Try Payment Again
+                Back to Dashboard
               </Link>
 
               <Link

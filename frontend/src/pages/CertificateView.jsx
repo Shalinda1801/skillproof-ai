@@ -1,7 +1,9 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   Award,
   Calendar,
+  CreditCard,
   Download,
   ShieldCheck,
   User,
@@ -12,14 +14,18 @@ import QRCode from "qrcode";
 import jsPDF from "jspdf";
 import { Link, useParams } from "react-router-dom";
 import { certificateApi } from "../api/certificateApi";
+import { paymentApi } from "../api/paymentApi";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
 
 const CertificateView = () => {
   const { certificateId } = useParams();
   const certificateRef = useRef(null);
-const [downloading, setDownloading] = useState(false);
-  
+
+  const [downloading, setDownloading] = useState(false);
   const [certificateData, setCertificateData] = useState(null);
+  const [certificateObjectId, setCertificateObjectId] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -29,10 +35,39 @@ const [downloading, setDownloading] = useState(false);
         setLoading(true);
         setError("");
 
-        const response = await certificateApi.verifyCertificate(certificateId);
-        setCertificateData(response);
+        const [certificateResponse, myCertificatesResponse, paymentsResponse] =
+          await Promise.all([
+            certificateApi.verifyCertificate(certificateId),
+            certificateApi.getMyCertificates(),
+            paymentApi.getMyPayments(),
+          ]);
+
+        const myCertificates = myCertificatesResponse.certificates || [];
+        const payments = paymentsResponse.payments || [];
+
+        const matchingCertificate = myCertificates.find(
+          (item) => item.certificateId === certificateId
+        );
+
+        const matchingPayment = payments.find((payment) => {
+          const paymentCertificateId =
+            payment.certificateId?._id || payment.certificateId;
+
+          return (
+            payment.certificatePublicId === certificateId ||
+            paymentCertificateId === matchingCertificate?._id
+          );
+        });
+
+        setCertificateData(certificateResponse);
+        setCertificateObjectId(matchingCertificate?._id || "");
+        setIsPaid(matchingPayment?.status === "PAID");
       } catch (err) {
-        setError(err.message || "Failed to load certificate.");
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Failed to load certificate."
+        );
       } finally {
         setLoading(false);
       }
@@ -42,179 +77,172 @@ const [downloading, setDownloading] = useState(false);
   }, [certificateId]);
 
   const certificate = certificateData?.certificate;
-  const clientUrl =
-  import.meta.env.VITE_CLIENT_URL || window.location.origin;
+  const clientUrl = import.meta.env.VITE_CLIENT_URL || window.location.origin;
+  const verifyUrl = `${clientUrl}/verify/${certificateId}`;
 
-const verifyUrl = `${clientUrl}/verify/${certificateId}`;
+  const handleDownloadPdf = async () => {
+    try {
+      setDownloading(true);
 
-  
-const handleDownloadPdf = async () => {
-  try {
-    setDownloading(true);
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        width: 300,
+        margin: 2,
+      });
 
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
-      width: 300,
-      margin: 2,
-    });
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
 
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
+      const pageWidth = 297;
+      const pageHeight = 210;
 
-    const pageWidth = 297;
-    const pageHeight = 210;
+      pdf.setFillColor(255, 250, 240);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
 
-    // Background
-    pdf.setFillColor(255, 250, 240);
-    pdf.rect(0, 0, pageWidth, pageHeight, "F");
+      pdf.setDrawColor(37, 99, 235);
+      pdf.setLineWidth(1.4);
+      pdf.rect(8, 8, pageWidth - 16, pageHeight - 16);
 
-    // Border
-    pdf.setDrawColor(37, 99, 235);
-    pdf.setLineWidth(1.4);
-    pdf.rect(8, 8, pageWidth - 16, pageHeight - 16);
+      pdf.setDrawColor(124, 58, 237);
+      pdf.setLineWidth(0.6);
+      pdf.rect(12, 12, pageWidth - 24, pageHeight - 24);
 
-    pdf.setDrawColor(124, 58, 237);
-    pdf.setLineWidth(0.6);
-    pdf.rect(12, 12, pageWidth - 24, pageHeight - 24);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("SkillProof AI", 22, 25);
 
-    // Header
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(18);
-    pdf.setTextColor(15, 23, 42);
-    pdf.text("SkillProof AI", 22, 25);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text("Verified Digital Credential", 22, 32);
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text("Verified Digital Credential", 22, 32);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.setTextColor(5, 150, 105);
+      pdf.text("VERIFIED CERTIFICATE", 230, 25);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
-    pdf.setTextColor(5, 150, 105);
-    pdf.text("VERIFIED CERTIFICATE", 230, 25);
+      pdf.setFontSize(8);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(`ID: ${certificate.certificateId}`, 230, 32);
 
-    pdf.setFontSize(8);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text(`ID: ${certificate.certificateId}`, 230, 32);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setTextColor(30, 64, 175);
+      pdf.text("CERTIFICATE OF ACHIEVEMENT", pageWidth / 2, 52, {
+        align: "center",
+      });
 
-    // Title
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(12);
-    pdf.setTextColor(30, 64, 175);
-    pdf.text("CERTIFICATE OF ACHIEVEMENT", pageWidth / 2, 52, {
-      align: "center",
-    });
+      pdf.setFont("times", "bold");
+      pdf.setFontSize(34);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text(certificate.student?.name || "Student Name", pageWidth / 2, 75, {
+        align: "center",
+      });
 
-    // Student name
-    pdf.setFont("times", "bold");
-    pdf.setFontSize(34);
-    pdf.setTextColor(15, 23, 42);
-    pdf.text(certificate.student?.name || "Student Name", pageWidth / 2, 75, {
-      align: "center",
-    });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(12);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(
+        "This certificate is proudly presented for successfully demonstrating practical project skills",
+        pageWidth / 2,
+        92,
+        { align: "center" }
+      );
+      pdf.text(
+        "and completing the verification process for",
+        pageWidth / 2,
+        100,
+        { align: "center" }
+      );
 
-    // Description
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(12);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text(
-      "This certificate is proudly presented for successfully demonstrating practical project skills",
-      pageWidth / 2,
-      92,
-      { align: "center" }
-    );
-    pdf.text("and completing the verification process for", pageWidth / 2, 100, {
-      align: "center",
-    });
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(24);
+      pdf.setTextColor(30, 64, 175);
+      pdf.text(
+        certificate.skill?.title || "Skill Certificate",
+        pageWidth / 2,
+        118,
+        { align: "center" }
+      );
 
-    // Skill
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(24);
-    pdf.setTextColor(30, 64, 175);
-    pdf.text(certificate.skill?.title || "Skill Certificate", pageWidth / 2, 118, {
-      align: "center",
-    });
+      pdf.setDrawColor(203, 213, 225);
+      pdf.setFillColor(255, 255, 255);
 
-    // Info row
-    pdf.setDrawColor(203, 213, 225);
-    pdf.setFillColor(255, 255, 255);
+      const boxY = 132;
+      const boxW = 58;
+      const boxH = 24;
+      const gap = 8;
+      const startX = 24;
 
-    const boxY = 132;
-    const boxW = 58;
-    const boxH = 24;
-    const gap = 8;
-    const startX = 24;
+      const infoBoxes = [
+        ["STUDENT EMAIL", certificate.student?.email || "N/A"],
+        ["SKILL LEVEL", certificate.assessment?.skillLevel || "Verified"],
+        ["SCORE", `${certificate.assessment?.score || 0}%`],
+        [
+          "ISSUED DATE",
+          certificate.issuedAt
+            ? new Date(certificate.issuedAt).toLocaleDateString()
+            : "N/A",
+        ],
+      ];
 
-    const infoBoxes = [
-      ["STUDENT EMAIL", certificate.student?.email || "N/A"],
-      ["SKILL LEVEL", certificate.assessment?.skillLevel || "Verified"],
-      ["SCORE", `${certificate.assessment?.score || 0}%`],
-      [
-        "ISSUED DATE",
-        certificate.issuedAt
-          ? new Date(certificate.issuedAt).toLocaleDateString()
-          : "N/A",
-      ],
-    ];
+      infoBoxes.forEach((box, index) => {
+        const x = startX + index * (boxW + gap);
+        pdf.roundedRect(x, boxY, boxW, boxH, 3, 3, "FD");
 
-    infoBoxes.forEach((box, index) => {
-      const x = startX + index * (boxW + gap);
-      pdf.roundedRect(x, boxY, boxW, boxH, 3, 3, "FD");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(7);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(box[0], x + 4, boxY + 8);
 
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10);
+        pdf.setTextColor(15, 23, 42);
+
+        const valueLines = pdf.splitTextToSize(box[1], boxW - 8);
+        pdf.text(valueLines, x + 4, boxY + 16);
+      });
+
+      pdf.roundedRect(24, 168, 190, 18, 3, 3, "FD");
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(7);
       pdf.setTextColor(100, 116, 139);
-      pdf.text(box[0], x + 4, boxY + 8);
+      pdf.text("PUBLIC VERIFICATION LINK", 30, 176);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(30, 64, 175);
+      pdf.text(verifyUrl, 30, 182);
+
+      pdf.addImage(qrDataUrl, "PNG", 232, 145, 38, 38);
 
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.setTextColor(15, 23, 42);
+      pdf.setFontSize(7);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text("SCAN TO VERIFY", 251, 190, { align: "center" });
 
-      const valueLines = pdf.splitTextToSize(box[1], boxW - 8);
-      pdf.text(valueLines, x + 4, boxY + 16);
-    });
+      pdf.setDrawColor(100, 116, 139);
+      pdf.line(35, 198, 95, 198);
+      pdf.line(120, 198, 190, 198);
 
-    // Verification link
-    pdf.roundedRect(24, 168, 190, 18, 3, 3, "FD");
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(7);
-    pdf.setTextColor(100, 116, 139);
-    pdf.text("PUBLIC VERIFICATION LINK", 30, 176);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text("SkillProof AI Verifier", 35, 204);
+      pdf.text("Digital Credential Authority", 120, 204);
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8);
-    pdf.setTextColor(30, 64, 175);
-    pdf.text(verifyUrl, 30, 182);
+      pdf.save(`${certificate.certificateId}.pdf`);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      alert("PDF download failed. Check browser console.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
-    // QR code
-    pdf.addImage(qrDataUrl, "PNG", 232, 145, 38, 38);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(7);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text("SCAN TO VERIFY", 251, 190, { align: "center" });
-
-    // Signatures
-    pdf.setDrawColor(100, 116, 139);
-    pdf.line(35, 198, 95, 198);
-    pdf.line(120, 198, 190, 198);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(8);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text("SkillProof AI Verifier", 35, 204);
-    pdf.text("Digital Credential Authority", 120, 204);
-
-    pdf.save(`${certificate.certificateId}.pdf`);
-  } catch (err) {
-    console.error("PDF download failed:", err);
-    alert("PDF download failed. Check browser console.");
-  } finally {
-    setDownloading(false);
-  }
-};
   if (loading) {
     return (
       <>
@@ -236,10 +264,69 @@ const handleDownloadPdf = async () => {
             <p className="mt-3 text-slate-400">
               {error || "This certificate could not be loaded."}
             </p>
-            <Link to="/verify" className="primary-btn mt-6 inline-flex">
-              Verify Another Certificate
+            <Link to="/student/dashboard" className="primary-btn mt-6 inline-flex">
+              Back to Dashboard
             </Link>
           </div>
+        </main>
+      </>
+    );
+  }
+
+  if (!isPaid) {
+    return (
+      <>
+        <AnimatedBackground />
+        <main className="relative z-10 grid min-h-screen place-items-center px-6 py-10 text-slate-100">
+          <section className="glass-card pro-card max-w-2xl rounded-[2rem] p-8 text-center">
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-amber-400/10 text-amber-200">
+              <AlertTriangle size={42} />
+            </div>
+
+            <h1 className="mt-6 text-4xl font-black">Payment Required</h1>
+
+            <p className="mt-4 leading-7 text-slate-400">
+              This certificate has been approved, but certificate view and PDF
+              download are locked until the certificate payment is completed.
+            </p>
+
+            <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/60 p-5 text-left">
+              <p className="text-sm text-slate-400">Certificate ID</p>
+              <p className="mt-1 font-black">{certificate.certificateId}</p>
+
+              <p className="mt-4 text-sm text-slate-400">Skill</p>
+              <p className="mt-1 font-black">
+                {certificate.skill?.title || "Skill Certificate"}
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {certificateObjectId ? (
+                <Link
+                  to={`/checkout/${certificateObjectId}`}
+                  className="primary-btn inline-flex justify-center gap-2"
+                >
+                  <CreditCard size={18} />
+                  Pay Certificate Fee
+                </Link>
+              ) : (
+                <Link
+                  to="/student/dashboard"
+                  className="primary-btn inline-flex justify-center"
+                >
+                  Go to Dashboard
+                </Link>
+              )}
+
+              <Link
+                to="/student/dashboard"
+                className="secondary-btn inline-flex justify-center gap-2"
+              >
+                <ArrowLeft size={18} />
+                Back to Dashboard
+              </Link>
+            </div>
+          </section>
         </main>
       </>
     );
@@ -265,24 +352,22 @@ const handleDownloadPdf = async () => {
             </Link>
 
             <div className="flex gap-3">
-           
-
-  <button
-  onClick={handleDownloadPdf}
-  disabled={downloading}
-  className="primary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
->
-  <Download size={18} />
-  {downloading ? "Preparing PDF..." : "Download PDF"}
-</button>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="primary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Download size={18} />
+                {downloading ? "Preparing PDF..." : "Download PDF"}
+              </button>
             </div>
           </div>
 
-<section
-  ref={certificateRef}
-  id="certificate-print-area"
-  className="certificate-paper mx-auto bg-[#fffaf0] text-slate-950"
->
+          <section
+            ref={certificateRef}
+            id="certificate-print-area"
+            className="certificate-paper mx-auto bg-[#fffaf0] text-slate-950"
+          >
             <div className="certificate-border">
               <div className="certificate-inner-border">
                 <div className="relative z-10 flex items-start justify-between gap-6">

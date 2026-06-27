@@ -43,8 +43,14 @@ const App = () => {
       />
          <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
         <Route path="/verify" element={<VerifyCertificate />} />
-        <Route path="/certificate/:certificateId" element={<CertificateView />} />
-      <Route path="/pricing" element={<Pricing />} />
+<Route
+  path="/certificate/:certificateId"
+  element={
+    <ProtectedRoute allowedRoles={["STUDENT"]}>
+      <CertificateView />
+    </ProtectedRoute>
+  }
+/>      <Route path="/pricing" element={<Pricing />} />
       <Route path="/checkout/:planId" element={<Checkout />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />

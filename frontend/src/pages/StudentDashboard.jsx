@@ -7,22 +7,29 @@ import {
   LogOut,
   Send,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { challengeApi } from "../api/challengeApi";
 import { certificateApi } from "../api/certificateApi";
 import { submissionApi } from "../api/submissionApi";
 import { useAuth } from "../context/AuthContext";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
+import { skillApi } from "../api/skillApi";
+import { paymentApi } from "../api/paymentApi";
 
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
 
   const [challenges, setChallenges] = useState([]);
+  const [skills, setSkills] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [certificates, setCertificates] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
-
+  const [personalizedRequests, setPersonalizedRequests] = useState([]);
+  
   const [formData, setFormData] = useState({
     githubLink: "https://github.com/Shalinda1801/skillproof-ai",
     liveDemoLink: "https://skillproof-ai-demo.vercel.app",
@@ -33,6 +40,15 @@ const StudentDashboard = () => {
 
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [aiChallengeLoading, setAiChallengeLoading] = useState(false);
+
+   const [aiChallengeForm, setAiChallengeForm] = useState({
+  skillId: "",
+  requestedLevel: "INTERMEDIATE",
+  interestArea: "ecommerce",
+  deadlineDays: 7,
+  extraNote: "I want to practice authentication and product management.",
+});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -41,21 +57,40 @@ const StudentDashboard = () => {
       setLoading(true);
       setError("");
 
-      const [challengeData, submissionData, certificateData] =
-        await Promise.all([
-          challengeApi.getChallenges(),
-          submissionApi.getMySubmissions(),
-          certificateApi.getMyCertificates(),
-        ]);
+const [
+  skillData,
+  challengeData,
+  submissionData,
+  certificateData,
+  personalizedRequestData,
+  paymentData,
+] = await Promise.all([
+  skillApi.getSkills(),
+  challengeApi.getChallenges(),
+  submissionApi.getMySubmissions(),
+  certificateApi.getMyCertificates(),
+  challengeApi.getMyPersonalizedChallengeRequests(),
+  paymentApi.getMyPayments(),
+]);
 
       const loadedChallenges = challengeData.challenges || [];
+      const loadedSkills = skillData.skills || [];
       const loadedSubmissions = submissionData.submissions || [];
       const loadedCertificates = certificateData.certificates || [];
+      const loadedPersonalizedRequests = personalizedRequestData.requests || [];
+      const loadedPayments = paymentData.payments || [];
 
       setChallenges(loadedChallenges);
+      setSkills(loadedSkills);
       setSubmissions(loadedSubmissions);
       setCertificates(loadedCertificates);
+      setPersonalizedRequests(loadedPersonalizedRequests);
+      setPayments(loadedPayments);
       setSelectedChallenge(loadedChallenges[0] || null);
+      setAiChallengeForm((currentData) => ({
+  ...currentData,
+  skillId: loadedSkills[0]?._id || currentData.skillId,
+}));
     } catch (err) {
       setError(err.message || "Failed to load student dashboard.");
     } finally {
@@ -63,27 +98,48 @@ const StudentDashboard = () => {
     }
   };
 
- useEffect(() => {
+useEffect(() => {
   const fetchInitialDashboardData = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [challengeData, submissionData, certificateData] =
-        await Promise.all([
-          challengeApi.getChallenges(),
-          submissionApi.getMySubmissions(),
-          certificateApi.getMyCertificates(),
-        ]);
+    const [
+  skillData,
+  challengeData,
+  submissionData,
+  certificateData,
+  personalizedRequestData,
+  paymentData,
+] = await Promise.all([
+  skillApi.getSkills(),
+  challengeApi.getChallenges(),
+  submissionApi.getMySubmissions(),
+  certificateApi.getMyCertificates(),
+  challengeApi.getMyPersonalizedChallengeRequests(),
+  paymentApi.getMyPayments(),
+]);
 
       const loadedChallenges = challengeData.challenges || [];
+      const loadedSkills = skillData.skills || [];
       const loadedSubmissions = submissionData.submissions || [];
       const loadedCertificates = certificateData.certificates || [];
+      const loadedPersonalizedRequests =
+        personalizedRequestData.requests || [];
+        const loadedPayments = paymentData.payments || [];
 
+      setSkills(loadedSkills);
       setChallenges(loadedChallenges);
       setSubmissions(loadedSubmissions);
       setCertificates(loadedCertificates);
+      setPersonalizedRequests(loadedPersonalizedRequests);
+      setPayments(loadedPayments);
       setSelectedChallenge(loadedChallenges[0] || null);
+
+      setAiChallengeForm((currentData) => ({
+        ...currentData,
+        skillId: loadedSkills[0]?._id || currentData.skillId,
+      }));
     } catch (err) {
       setError(err.message || "Failed to load student dashboard.");
     } finally {
@@ -93,6 +149,43 @@ const StudentDashboard = () => {
 
   fetchInitialDashboardData();
 }, []);
+    
+    const handleAiChallengeChange = (event) => {
+  const { name, value } = event.target;
+
+  setAiChallengeForm((currentData) => ({
+    ...currentData,
+    [name]: name === "deadlineDays" ? Number(value) : value,
+  }));
+};
+
+const handleRequestAiChallenge = async (event) => {
+  event.preventDefault();
+
+  if (!aiChallengeForm.skillId) {
+    setError("Please select a skill first.");
+    return;
+  }
+
+  try {
+    setAiChallengeLoading(true);
+    setMessage("");
+    setError("");
+
+    await challengeApi.requestPersonalizedChallenge(aiChallengeForm);
+
+    setMessage(
+      "AI challenge draft generated successfully and sent for admin review."
+    );
+
+    await loadDashboardData();
+  } catch (err) {
+    setError(err.message || "AI challenge request failed.");
+  } finally {
+    setAiChallengeLoading(false);
+  }
+};
+  
   const handleChange = (event) => {
     setFormData((currentData) => ({
       ...currentData,
@@ -129,6 +222,22 @@ const StudentDashboard = () => {
       setSubmitLoading(false);
     }
   };
+   
+  const getCertificatePayment = (certificate) => {
+  return payments.find((payment) => {
+    const paymentCertificateId =
+      payment.certificateId?._id || payment.certificateId;
+
+    return (
+      paymentCertificateId === certificate._id ||
+      payment.certificatePublicId === certificate.certificateId
+    );
+  });
+};
+
+const isCertificatePaid = (certificate) => {
+  return getCertificatePayment(certificate)?.status === "PAID";
+};
 
   const cards = [
     {
@@ -220,6 +329,168 @@ const StudentDashboard = () => {
                   </div>
                 ))}
               </section>
+                  <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+  <div className="glass-card rounded-[2rem] p-6">
+    <div className="flex items-center gap-3">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-purple-600 shadow-lg shadow-purple-600/30">
+        <Sparkles />
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-black">
+          Generate My AI Challenge
+        </h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Tell Gemini what you want to practice. Admin will review before it becomes available.
+        </p>
+      </div>
+    </div>
+
+    <form onSubmit={handleRequestAiChallenge} className="mt-6">
+      <label className="mb-2 block text-sm font-semibold text-slate-300">
+        Skill path
+      </label>
+      <select
+        className="input-field"
+        name="skillId"
+        value={aiChallengeForm.skillId}
+        onChange={handleAiChallengeChange}
+      >
+        <option value="">Select skill</option>
+
+    {skills.map((skill) => (
+  <option key={skill._id} value={skill._id}>
+    {skill.title}
+  </option>
+))}   
+      </select>
+
+      <label className="mb-2 mt-5 block text-sm font-semibold text-slate-300">
+        Requested level
+      </label>
+      <select
+        className="input-field"
+        name="requestedLevel"
+        value={aiChallengeForm.requestedLevel}
+        onChange={handleAiChallengeChange}
+      >
+        <option value="BEGINNER">BEGINNER</option>
+        <option value="INTERMEDIATE">INTERMEDIATE</option>
+        <option value="ADVANCED">ADVANCED</option>
+      </select>
+
+      <label className="mb-2 mt-5 block text-sm font-semibold text-slate-300">
+        Interest area
+      </label>
+      <input
+        className="input-field"
+        name="interestArea"
+        value={aiChallengeForm.interestArea}
+        onChange={handleAiChallengeChange}
+        placeholder="ecommerce, education, finance, productivity..."
+      />
+
+      <label className="mb-2 mt-5 block text-sm font-semibold text-slate-300">
+        Deadline days
+      </label>
+      <input
+        className="input-field"
+        type="number"
+        min="1"
+        max="90"
+        name="deadlineDays"
+        value={aiChallengeForm.deadlineDays}
+        onChange={handleAiChallengeChange}
+      />
+
+      <label className="mb-2 mt-5 block text-sm font-semibold text-slate-300">
+        Extra note
+      </label>
+      <textarea
+        className="input-field min-h-24 resize-none"
+        name="extraNote"
+        value={aiChallengeForm.extraNote}
+        onChange={handleAiChallengeChange}
+        placeholder="Example: I want to practice JWT authentication and product management."
+      />
+
+      <button
+        type="submit"
+        className="primary-btn mt-6 inline-flex w-full justify-center gap-2"
+        disabled={aiChallengeLoading}
+      >
+        {aiChallengeLoading ? (
+          <Loader2 className="animate-spin" size={18} />
+        ) : (
+          <Sparkles size={18} />
+        )}
+        {aiChallengeLoading
+          ? "Generating Challenge..."
+          : "Generate My AI Challenge"}
+      </button>
+    </form>
+  </div>
+
+  <div className="glass-card rounded-[2rem] p-6">
+    <h2 className="text-2xl font-black">My AI Challenge Requests</h2>
+    <p className="mt-2 text-sm text-slate-400">
+      Your generated challenge drafts will appear here while waiting for admin approval.
+    </p>
+
+    <div className="mt-5 space-y-4">
+      {personalizedRequests.map((request) => (
+        <div
+          key={request._id}
+          className="rounded-3xl border border-slate-800 bg-slate-950/50 p-5"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-black">
+                {request.generatedTitle}
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-400">
+                Skill: {request.skillId?.title || "Skill"}
+              </p>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Interest: {request.interestArea}
+              </p>
+            </div>
+
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                request.status === "APPROVED"
+                  ? "bg-emerald-400/10 text-emerald-200"
+                  : request.status === "REJECTED"
+                  ? "bg-red-400/10 text-red-200"
+                  : "bg-amber-400/10 text-amber-200"
+              }`}
+            >
+              {request.status}
+            </span>
+          </div>
+
+          <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-400">
+            {request.generatedInstructions}
+          </p>
+
+          {request.createdChallengeId && (
+            <p className="mt-4 text-sm font-bold text-emerald-300">
+              Approved challenge is now available in your challenge list.
+            </p>
+          )}
+        </div>
+      ))}
+
+      {personalizedRequests.length === 0 && (
+        <p className="rounded-2xl bg-slate-950/60 p-4 text-slate-400">
+          No AI challenge requests yet.
+        </p>
+      )}
+    </div>
+  </div>
+</section>
 
               <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="glass-card rounded-[2rem] p-6">
@@ -413,20 +684,43 @@ const StudentDashboard = () => {
                         <p className="mt-1 text-sm text-emerald-300">
                           Status: {certificate.status}
                         </p>
-                        <div className="mt-4 flex flex-wrap gap-3">
-  <a
-    href={`/certificate/${certificate.certificateId}`}
-    className="secondary-btn text-sm"
-  >
-    View Certificate
-  </a>
+          <div className="mt-4">
+  {isCertificatePaid(certificate) ? (
+    <>
+      <div className="mb-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200">
+        Payment completed. Certificate access unlocked.
+      </div>
 
-  <a
-    href={`/verify/${certificate.certificateId}`}
-    className="secondary-btn text-sm"
-  >
-    Verify Publicly
-  </a>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          to={`/certificate/${certificate.certificateId}`}
+          className="secondary-btn text-sm"
+        >
+          View Certificate
+        </Link>
+
+        <Link
+          to={`/verify/${certificate.certificateId}`}
+          className="secondary-btn text-sm"
+        >
+          Verify Publicly
+        </Link>
+      </div>
+    </>
+  ) : (
+    <>
+      <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-bold text-amber-100">
+        Payment required to unlock certificate access.
+      </div>
+
+      <Link
+        to={`/checkout/${certificate._id}`}
+        className="primary-btn inline-flex text-sm"
+      >
+        Pay Certificate Fee
+      </Link>
+    </>
+  )}
 </div>
                       </div>
                     ))}

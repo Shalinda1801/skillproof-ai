@@ -2,20 +2,22 @@ import {
   Award,
   Brain,
   Calendar,
-  CheckCircle2,
   ClipboardCheck,
   Search,
-  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
-import HeroCredentialVisual from "../components/ui/HeroCredentialVisual";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SectionBadge from "../components/ui/SectionBadge";
+import heroImage from "../assets/images/skillproof-hero-verified-talent.png";
+import credentialImage from "../assets/images/skillproof-credential-verification.png";
+import candidateDashboardImage from "../assets/images/skillproof-candidate-dashboard.png";
+import reviewWorkspaceImage from "../assets/images/skillproof-review-workspace.png";
+import trustedHiringImage from "../assets/images/skillproof-trusted-hiring.png";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -128,13 +130,19 @@ const Home = () => {
               </div>
             </motion.div>
 
-            <motion.div
+       <motion.div
   className="relative"
   initial={{ opacity: 0, scale: 0.92, y: 30 }}
   animate={{ opacity: 1, scale: 1, y: 0 }}
   transition={{ delay: 0.2, duration: 0.8 }}
 >
-  <HeroCredentialVisual />
+  <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-slate-950/50 p-2 shadow-2xl shadow-blue-500/20">
+    <img
+      src={heroImage}
+      alt="SkillProof verified talent dashboard"
+      className="h-full w-full rounded-[2rem] object-cover"
+    />
+  </div>
 </motion.div>
 
           </div>
@@ -228,65 +236,57 @@ const Home = () => {
           </div>
         </section>
 
-        {/* GALLERY */}
-        <section id="gallery" className="px-6 py-24">
-          <div className="mx-auto max-w-7xl">
-            <SectionBadge>Gallery</SectionBadge>
-            <h2 className="max-w-3xl text-4xl font-black md:text-5xl">
-              Platform preview with premium dashboard experience.
-            </h2>
+       {/* GALLERY */}
+<section id="gallery" className="px-6 py-24">
+  <div className="mx-auto max-w-7xl">
+    <SectionBadge>Gallery</SectionBadge>
 
-            <div className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="premium-card rounded-[2.5rem] p-6">
-                <div className="rounded-[2rem] border border-slate-800 bg-slate-950/70 p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-400">Admin Dashboard</p>
-                      <h3 className="mt-1 text-2xl font-black">
-                        Review Workspace
-                      </h3>
-                    </div>
-                    <ClipboardCheck className="text-purple-300" size={38} />
-                  </div>
+    <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+      <h2 className="max-w-3xl text-4xl font-black md:text-5xl">
+        A premium experience for verified talent and trusted hiring.
+      </h2>
 
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    {["Run AI", "Approve", "Generate Certificate", "Verify"].map(
-                      (label) => (
-                        <div
-                          key={label}
-                          className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
-                        >
-                          <CheckCircle2 className="mb-3 text-emerald-300" />
-                          <p className="font-bold">{label}</p>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
+      <p className="max-w-xl leading-7 text-slate-400">
+        SkillProof gives companies a clean way to review verified candidates,
+        confirm credentials, and make confident hiring decisions.
+      </p>
+    </div>
 
-              <div className="premium-card rounded-[2.5rem] p-6">
-                <div className="rounded-[2rem] border border-emerald-400/20 bg-emerald-400/10 p-6">
-                  <ShieldCheck className="text-emerald-300" size={54} />
-                  <h3 className="mt-6 text-3xl font-black">
-                    Certificate Verified
-                  </h3>
-                  <p className="mt-3 text-slate-300">
-                    Public certificate verification gives companies confidence
-                    in student credentials.
-                  </p>
-                  <Link to="/verify" className="primary-btn mt-6 inline-flex">
-                    Verify Certificate
-                  </Link>
-                  <Link to="/verify/CERT-2026-000001" className="secondary-btn mt-3 inline-flex">
-  View Demo Certificate
-</Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+    <div className="mt-10 grid gap-6 lg:grid-cols-2">
+      <div className="premium-card rounded-[2.5rem] p-4">
+        <img
+          src={candidateDashboardImage}
+          alt="Candidate dashboard preview"
+          className="h-full w-full rounded-[2rem] object-cover"
+        />
+      </div>
 
+      <div className="premium-card rounded-[2.5rem] p-4">
+        <img
+          src={credentialImage}
+          alt="Credential verification preview"
+          className="h-full w-full rounded-[2rem] object-cover"
+        />
+      </div>
+
+      <div className="premium-card rounded-[2.5rem] p-4">
+        <img
+          src={reviewWorkspaceImage}
+          alt="Review workspace preview"
+          className="h-full w-full rounded-[2rem] object-cover"
+        />
+      </div>
+
+      <div className="premium-card rounded-[2.5rem] p-4">
+        <img
+          src={trustedHiringImage}
+          alt="Trusted hiring workflow preview"
+          className="h-full w-full rounded-[2rem] object-cover"
+        />
+      </div>
+    </div>
+  </div>
+</section>
         {/* TESTIMONIALS */}
         <section className="px-6 py-24">
           <div className="mx-auto max-w-7xl">

@@ -12,155 +12,283 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { adminApi } from "../api/adminApi";
+import { challengeApi } from "../api/challengeApi";
 import AnimatedBackground from "../components/ui/AnimatedBackground";
 import { useAuth } from "../context/AuthContext";
+
+const isReviewableSubmission = (submission) => {
+  return submission.status !== "REJECTED";
+};
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
 
   const [submissions, setSubmissions] = useState([]);
   const [certificates, setCertificates] = useState([]);
+  const [personalizedChallengeRequests, setPersonalizedChallengeRequests] =
+    useState([]);
+
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [reviewNote, setReviewNote] = useState(
     "Submission approved after reviewing AI assessment and project evidence."
   );
+
   const [aiAssessmentResult, setAiAssessmentResult] = useState(null);
+  const [showAiChallengeReview, setShowAiChallengeReview] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const loadAdminData = async () => {
+  const getAssessmentFromResponse = (response) => {
+    return (
+      response?.assessment ||
+      response?.aiAssessment ||
+      response?.data?.assessment ||
+      response
+    );
+  };
+
+  const resetReviewWorkspace = () => {
+    setSelectedSubmission(null);
+    setAiAssessmentResult(null);
+    setReviewNote(
+      "Submission approved after reviewing AI assessment and project evidence."
+    );
+  };
+
+  const loadAdminData = async ({
+    keepSelected = true,
+    autoSelectFirstReviewable = false,
+  } = {}) => {
     try {
       setLoading(true);
       setError("");
 
-      const [submissionData, certificateData] = await Promise.all([
-        adminApi.getAllSubmissions(),
-        adminApi.getAllCertificates(),
-      ]);
+      const [submissionData, certificateData, challengeRequestData] =
+        await Promise.all([
+          adminApi.getAllSubmissions(),
+          adminApi.getAllCertificates(),
+          challengeApi.getPersonalizedChallengeRequestsForAdmin(),
+        ]);
 
       const loadedSubmissions = submissionData.submissions || [];
+      const loadedCertificates = certificateData.certificates || [];
+      const loadedChallengeRequests = challengeRequestData.requests || [];
+      const loadedReviewSubmissions =
+        loadedSubmissions.filter(isReviewableSubmission);
 
       setSubmissions(loadedSubmissions);
-      setCertificates(certificateData.certificates || []);
+      setCertificates(loadedCertificates);
+      setPersonalizedChallengeRequests(loadedChallengeRequests);
 
       setSelectedSubmission((currentSubmission) => {
-        if (!currentSubmission) {
-          return loadedSubmissions[0] || null;
+        if (autoSelectFirstReviewable) {
+          return loadedReviewSubmissions[0] || null;
+        }
+
+        if (!keepSelected || !currentSubmission) {
+          return null;
         }
 
         const updatedSelectedSubmission = loadedSubmissions.find(
           (submission) => submission._id === currentSubmission._id
         );
 
-        return updatedSelectedSubmission || loadedSubmissions[0] || null;
+        if (!updatedSelectedSubmission) {
+          return null;
+        }
+
+        if (updatedSelectedSubmission.status === "REJECTED") {
+          return null;
+        }
+
+        return updatedSelectedSubmission;
       });
+
+      return {
+        submissions: loadedSubmissions,
+        certificates: loadedCertificates,
+        requests: loadedChallengeRequests,
+      };
+    } catch (err) {
+      setError(err.message || "Failed to load admin data.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+ useEffect(() => {
+  const fetchInitialAdminData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [submissionData, certificateData, challengeRequestData] =
+        await Promise.all([
+          adminApi.getAllSubmissions(),
+          adminApi.getAllCertificates(),
+          challengeApi.getPersonalizedChallengeRequestsForAdmin(),
+        ]);
+
+      const loadedSubmissions = submissionData.submissions || [];
+      const loadedCertificates = certificateData.certificates || [];
+      const loadedChallengeRequests = challengeRequestData.requests || [];
+      const loadedReviewSubmissions =
+        loadedSubmissions.filter(isReviewableSubmission);
+
+      setSubmissions(loadedSubmissions);
+      setCertificates(loadedCertificates);
+      setPersonalizedChallengeRequests(loadedChallengeRequests);
+      setSelectedSubmission(loadedReviewSubmissions[0] || null);
     } catch (err) {
       setError(err.message || "Failed to load admin data.");
     } finally {
       setLoading(false);
     }
   };
-   
-    const getAssessmentFromResponse = (response) => {
-  return (
-    response?.assessment ||
-    response?.aiAssessment ||
-    response?.data?.assessment ||
-    response
-  );
-};
 
-  useEffect(() => {
-    const fetchInitialAdminData = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  fetchInitialAdminData();
+}, []);
 
-        const [submissionData, certificateData] = await Promise.all([
-          adminApi.getAllSubmissions(),
-          adminApi.getAllCertificates(),
-        ]);
-
-        const loadedSubmissions = submissionData.submissions || [];
-
-        setSubmissions(loadedSubmissions);
-        setCertificates(certificateData.certificates || []);
-        setSelectedSubmission(loadedSubmissions[0] || null);
-      } catch (err) {
-        setError(err.message || "Failed to load admin data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitialAdminData();
-  }, []);
-
-const handleRunAi = async () => {
-  if (!selectedSubmission) return;
-
-  try {
-    setActionLoading("ai");
-    setMessage("");
-    setError("");
-    setAiAssessmentResult(null);
-
-    const response = await adminApi.runAiAssessment(selectedSubmission._id);
-    const assessment = getAssessmentFromResponse(response);
-
-    setAiAssessmentResult(assessment);
-    setMessage("AI assessment completed successfully.");
-
-    await loadAdminData();
-  } catch (err) {
-    setError(err.message || "AI assessment failed.");
-  } finally {
-    setActionLoading("");
-  }
-};
-
-  const handleApprove = async () => {
+  const handleRunAi = async () => {
     if (!selectedSubmission) return;
 
     try {
-      setActionLoading("approve");
+      setActionLoading("ai");
       setMessage("");
       setError("");
+      setAiAssessmentResult(null);
 
-      await adminApi.updateSubmissionStatus(selectedSubmission._id, {
-        status: "APPROVED",
-        reviewNote,
+      const response = await adminApi.runAiAssessment(selectedSubmission._id);
+      const assessment = getAssessmentFromResponse(response);
+
+      setAiAssessmentResult(assessment);
+      setMessage("AI assessment completed successfully.");
+
+      await loadAdminData({
+        keepSelected: true,
       });
-
-      setMessage("Submission approved successfully.");
-      await loadAdminData();
     } catch (err) {
-      setError(err.message || "Approval failed.");
+      setError(err.message || "AI assessment failed.");
     } finally {
       setActionLoading("");
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedSubmission) return;
+const handleApprove = async () => {
+  if (!selectedSubmission) return;
 
+  try {
+    setActionLoading("approve");
+    setError("");
+    setMessage("");
+
+    await adminApi.updateSubmissionStatus(selectedSubmission._id, {
+      status: "APPROVED",
+      reviewNote,
+    });
+
+    const approvedSubmission = {
+      ...selectedSubmission,
+      status: "APPROVED",
+    };
+
+    setSelectedSubmission(approvedSubmission);
+    setSubmissions((currentSubmissions) =>
+      currentSubmissions.map((submission) =>
+        submission._id === approvedSubmission._id
+          ? approvedSubmission
+          : submission
+      )
+    );
+
+    setMessage(
+      "Submission approved successfully. You can now generate the certificate."
+    );
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        error.message ||
+        "Failed to approve submission."
+    );
+  } finally {
+    setActionLoading("");
+  }
+};
+
+  const handleReject = async () => {
+  if (!selectedSubmission) return;
+
+  try {
+    setActionLoading("reject");
+    setError("");
+    setMessage("");
+
+    await adminApi.updateSubmissionStatus(selectedSubmission._id, {
+      status: "REJECTED",
+      reviewNote: reviewNote || "Submission rejected after review.",
+    });
+
+    await loadAdminData({
+      keepSelected: false,
+    });
+
+    resetReviewWorkspace();
+
+    setMessage("Submission rejected successfully.");
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        error.message ||
+        "Failed to reject submission."
+    );
+  } finally {
+    setActionLoading("");
+  }
+};
+
+  const handleApproveAiChallengeRequest = async (requestId) => {
     try {
-      setActionLoading("reject");
+      setActionLoading(`approve-ai-${requestId}`);
       setMessage("");
       setError("");
 
-      await adminApi.updateSubmissionStatus(selectedSubmission._id, {
-        status: "REJECTED",
-        reviewNote: reviewNote || "Submission rejected after review.",
+      await challengeApi.approvePersonalizedChallengeRequest(requestId, {
+        adminNote: "AI-generated personalized challenge approved by admin.",
       });
 
-      setMessage("Submission rejected.");
-      await loadAdminData();
+      setMessage("AI challenge request approved successfully.");
+
+      await loadAdminData({
+        keepSelected: true,
+      });
     } catch (err) {
-      setError(err.message || "Reject failed.");
+      setError(err.message || "AI challenge approval failed.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const handleRejectAiChallengeRequest = async (requestId) => {
+    try {
+      setActionLoading(`reject-ai-${requestId}`);
+      setMessage("");
+      setError("");
+
+      await challengeApi.rejectPersonalizedChallengeRequest(requestId, {
+        adminNote: "AI-generated personalized challenge rejected by admin.",
+      });
+
+      setMessage("AI challenge request rejected.");
+
+      await loadAdminData({
+        keepSelected: true,
+      });
+    } catch (err) {
+      setError(err.message || "AI challenge rejection failed.");
     } finally {
       setActionLoading("");
     }
@@ -175,8 +303,14 @@ const handleRunAi = async () => {
       setError("");
 
       await adminApi.generateCertificate(selectedSubmission._id);
+
+      await loadAdminData({
+        keepSelected: false,
+      });
+
+      resetReviewWorkspace();
+
       setMessage("Certificate generated successfully.");
-      await loadAdminData();
     } catch (err) {
       setError(err.message || "Certificate generation failed.");
     } finally {
@@ -191,6 +325,17 @@ const handleRunAi = async () => {
   const approvedCount = submissions.filter(
     (item) => item.status === "APPROVED"
   ).length;
+
+  const pendingAiChallengeRequests = personalizedChallengeRequests.filter(
+    (request) => request.status === "PENDING"
+  );
+
+  const pendingAiChallengeCount = pendingAiChallengeRequests.length;
+
+  const reviewSubmissions = submissions.filter(isReviewableSubmission);
+
+  const shouldShowReviewWorkspace =
+    selectedSubmission && selectedSubmission.status !== "REJECTED";
 
   const statCards = [
     {
@@ -230,6 +375,7 @@ const handleRunAi = async () => {
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-purple-600 shadow-lg shadow-purple-600/30">
                 <ShieldCheck />
               </div>
+
               <div>
                 <p className="text-lg font-black">SkillProof AI</p>
                 <p className="text-sm text-slate-400">Admin Dashboard</p>
@@ -295,6 +441,207 @@ const handleRunAi = async () => {
                 ))}
               </section>
 
+              <section className="mt-8 glass-card rounded-[2rem] p-6">
+                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.25em] text-purple-300">
+                      AI Challenge Review
+                    </p>
+
+                    <h2 className="mt-2 text-2xl font-black">
+                      Personalized AI Challenge Requests
+                    </h2>
+
+                    <p className="mt-2 text-sm text-slate-400">
+                      Keep this panel closed to keep the dashboard clean. Open
+                      it only when you want to review generated challenge
+                      drafts.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3 text-sm">
+                      <span className="text-slate-400">Total:</span>{" "}
+                      <span className="font-black text-blue-300">
+                        {personalizedChallengeRequests.length}
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-5 py-3 text-sm">
+                      <span className="text-slate-400">Pending:</span>{" "}
+                      <span className="font-black text-amber-200">
+                        {pendingAiChallengeCount}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        setShowAiChallengeReview(
+                          (currentValue) => !currentValue
+                        )
+                      }
+                      className="primary-btn inline-flex items-center gap-2"
+                    >
+                      <Sparkles size={18} />
+                      {showAiChallengeReview
+                        ? "Hide Review Panel"
+                        : "Open Review Panel"}
+                    </button>
+                  </div>
+                </div>
+
+                {showAiChallengeReview && (
+                  <>
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={() =>
+                          loadAdminData({
+                            keepSelected: true,
+                          })
+                        }
+                        className="secondary-btn inline-flex items-center gap-2"
+                      >
+                        <RefreshCcw size={16} />
+                        Refresh Requests
+                      </button>
+                    </div>
+
+                    <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                      {pendingAiChallengeRequests.map((request) => (
+                        <div
+                          key={request._id}
+                          className="rounded-3xl border border-slate-800 bg-slate-950/50 p-5"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="text-xl font-black">
+                                {request.generatedTitle}
+                              </h3>
+
+                              <p className="mt-2 text-sm leading-6 text-slate-400">
+                                Student: {request.studentId?.name || "Student"}{" "}
+                                • {request.studentId?.email || "No email"}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-400">
+                                Skill: {request.skillId?.title || "Skill path"}
+                              </p>
+
+                              <p className="mt-1 text-sm text-slate-400">
+                                Interest: {request.interestArea}
+                              </p>
+                            </div>
+
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                request.status === "APPROVED"
+                                  ? "bg-emerald-400/10 text-emerald-200"
+                                  : request.status === "REJECTED"
+                                  ? "bg-red-400/10 text-red-200"
+                                  : "bg-amber-400/10 text-amber-200"
+                              }`}
+                            >
+                              {request.status}
+                            </span>
+                          </div>
+
+                          <div className="mt-5 max-h-48 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                            <h4 className="font-black text-blue-300">
+                              Generated Instructions
+                            </h4>
+
+                            <p className="mt-2 text-sm leading-7 text-slate-300">
+                              {request.generatedInstructions}
+                            </p>
+                          </div>
+
+                          <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                              <h4 className="font-black text-purple-300">
+                                Challenge Details
+                              </h4>
+
+                              <p className="mt-3 text-sm text-slate-400">
+                                Difficulty:{" "}
+                                <span className="font-bold text-slate-200">
+                                  {request.generatedDifficulty}
+                                </span>
+                              </p>
+
+                              <p className="mt-2 text-sm text-slate-400">
+                                Deadline:{" "}
+                                <span className="font-bold text-slate-200">
+                                  {request.deadlineDays} days
+                                </span>
+                              </p>
+
+                              <p className="mt-2 text-sm text-slate-400">
+                                Provider:{" "}
+                                <span className="font-bold text-slate-200">
+                                  {request.provider}
+                                </span>
+                              </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                              <h4 className="font-black text-emerald-300">
+                                Required Evidence
+                              </h4>
+
+                              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                                {(request.generatedRequiredEvidence || []).map(
+                                  (item, index) => (
+                                    <li key={index}>• {item}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+
+                          <div className="mt-5 grid gap-3 md:grid-cols-2">
+                            <button
+                              onClick={() =>
+                                handleApproveAiChallengeRequest(request._id)
+                              }
+                              className="primary-btn inline-flex justify-center gap-2"
+                              disabled={Boolean(actionLoading)}
+                            >
+                              {actionLoading ===
+                              `approve-ai-${request._id}` ? (
+                                <Loader2 className="animate-spin" size={18} />
+                              ) : (
+                                <ShieldCheck size={18} />
+                              )}
+                              Approve Challenge
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleRejectAiChallengeRequest(request._id)
+                              }
+                              className="secondary-btn inline-flex justify-center gap-2"
+                              disabled={Boolean(actionLoading)}
+                            >
+                              {actionLoading === `reject-ai-${request._id}` ? (
+                                <Loader2 className="animate-spin" size={18} />
+                              ) : null}
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {pendingAiChallengeRequests.length === 0 && (
+                      <p className="mt-6 rounded-2xl bg-slate-950/60 p-4 text-slate-400">
+                        No pending AI challenge requests. Approved and rejected
+                        requests are hidden from this review panel.
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+
               <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="glass-card rounded-[2rem] p-6">
                   <div className="flex items-center justify-between gap-4">
@@ -308,7 +655,11 @@ const handleRunAi = async () => {
                     </div>
 
                     <button
-                      onClick={loadAdminData}
+                      onClick={() =>
+                        loadAdminData({
+                          keepSelected: true,
+                        })
+                      }
                       className="secondary-btn inline-flex items-center gap-2"
                     >
                       <RefreshCcw size={16} />
@@ -317,13 +668,15 @@ const handleRunAi = async () => {
                   </div>
 
                   <div className="mt-5 space-y-4">
-                    {submissions.map((submission) => (
+                    {reviewSubmissions.map((submission) => (
                       <button
                         key={submission._id}
                         onClick={() => {
-  setSelectedSubmission(submission);
-  setAiAssessmentResult(null);
-}}
+                          setSelectedSubmission(submission);
+                          setAiAssessmentResult(
+                            submission.aiAssessment || null
+                          );
+                        }}
                         className={`w-full rounded-3xl border p-5 text-left transition ${
                           selectedSubmission?._id === submission._id
                             ? "border-purple-400/70 bg-purple-500/10"
@@ -354,9 +707,9 @@ const handleRunAi = async () => {
                       </button>
                     ))}
 
-                    {submissions.length === 0 && (
+                    {reviewSubmissions.length === 0 && (
                       <p className="rounded-2xl bg-slate-950/60 p-4 text-slate-400">
-                        No submissions found.
+                        No submissions waiting for review. Rejected submissions are hidden from this review list.
                       </p>
                     )}
                   </div>
@@ -365,7 +718,7 @@ const handleRunAi = async () => {
                 <div className="glass-card rounded-[2rem] p-6">
                   <h2 className="text-2xl font-black">Review Workspace</h2>
 
-                  {selectedSubmission ? (
+                  {shouldShowReviewWorkspace ? (
                     <>
                       <div className="mt-5 rounded-3xl border border-purple-400/20 bg-purple-400/10 p-5">
                         <p className="text-sm font-bold text-purple-200">
@@ -422,73 +775,90 @@ const handleRunAi = async () => {
                             "No explanation provided."}
                         </p>
                       </div>
-                         
-                         {aiAssessmentResult && (
-  <div className="mt-5 rounded-3xl border border-purple-400/30 bg-purple-500/10 p-5">
-    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-      <div>
-        <p className="text-sm font-bold uppercase tracking-[0.25em] text-purple-300">
-          AI Assessment Result
-        </p>
 
-        <h4 className="mt-2 text-2xl font-black">
-          {aiAssessmentResult.score ?? 0}% Score
-        </h4>
+                      {aiAssessmentResult && (
+                        <div className="mt-5 rounded-3xl border border-purple-400/30 bg-purple-500/10 p-5">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <p className="text-sm font-bold uppercase tracking-[0.25em] text-purple-300">
+                                AI Assessment Result
+                              </p>
 
-        <p className="mt-2 text-sm text-slate-300">
-          Skill Level:{" "}
-          <span className="font-bold text-blue-300">
-            {aiAssessmentResult.skillLevel || "N/A"}
-          </span>
-        </p>
-      </div>
+                              <h4 className="mt-2 text-2xl font-black">
+                                {aiAssessmentResult.score ?? 0}% Score
+                              </h4>
 
-      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200">
-        Recommendation:{" "}
-        {aiAssessmentResult.certificateRecommendation || "NEEDS_REVIEW"}
-      </div>
-    </div>
+                              <p className="mt-2 text-sm text-slate-300">
+                                Skill Level:{" "}
+                                <span className="font-bold text-blue-300">
+                                  {aiAssessmentResult.skillLevel || "N/A"}
+                                </span>
+                              </p>
+                            </div>
 
-    <div className="mt-5 grid gap-4 md:grid-cols-3">
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-        <h5 className="font-black text-emerald-300">Strengths</h5>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-          {(aiAssessmentResult.strengths || []).map((item, index) => (
-            <li key={index}>• {item}</li>
-          ))}
-        </ul>
-      </div>
+                            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200">
+                              Recommendation:{" "}
+                              {aiAssessmentResult.certificateRecommendation ||
+                                "NEEDS_REVIEW"}
+                            </div>
+                          </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-        <h5 className="font-black text-amber-300">Weaknesses</h5>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-          {(aiAssessmentResult.weaknesses || []).map((item, index) => (
-            <li key={index}>• {item}</li>
-          ))}
-        </ul>
-      </div>
+                          <div className="mt-5 grid gap-4 md:grid-cols-3">
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                              <h5 className="font-black text-emerald-300">
+                                Strengths
+                              </h5>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-        <h5 className="font-black text-blue-300">Improvements</h5>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-          {(aiAssessmentResult.improvements || []).map((item, index) => (
-            <li key={index}>• {item}</li>
-          ))}
-        </ul>
-      </div>
-    </div>
+                              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                                {(aiAssessmentResult.strengths || []).map(
+                                  (item, index) => (
+                                    <li key={index}>• {item}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
 
-    <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
-      <span className="rounded-full bg-slate-900 px-3 py-1">
-        Provider: {aiAssessmentResult.provider || "MOCK/GEMINI"}
-      </span>
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                              <h5 className="font-black text-amber-300">
+                                Weaknesses
+                              </h5>
 
-      <span className="rounded-full bg-slate-900 px-3 py-1">
-        Model: {aiAssessmentResult.model || "N/A"}
-      </span>
-    </div>
-  </div>
-)}
+                              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                                {(aiAssessmentResult.weaknesses || []).map(
+                                  (item, index) => (
+                                    <li key={index}>• {item}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                              <h5 className="font-black text-blue-300">
+                                Improvements
+                              </h5>
+
+                              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                                {(aiAssessmentResult.improvements || []).map(
+                                  (item, index) => (
+                                    <li key={index}>• {item}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+                            <span className="rounded-full bg-slate-900 px-3 py-1">
+                              Provider:{" "}
+                              {aiAssessmentResult.provider || "MOCK/GEMINI"}
+                            </span>
+
+                            <span className="rounded-full bg-slate-900 px-3 py-1">
+                              Model: {aiAssessmentResult.model || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="mt-5">
                         <label className="mb-2 block text-sm font-semibold text-slate-300">
@@ -503,54 +873,61 @@ const handleRunAi = async () => {
                         />
                       </div>
 
-                      <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        <button
-                          onClick={handleRunAi}
-                          className="secondary-btn inline-flex justify-center gap-2"
-                          disabled={Boolean(actionLoading)}
-                        >
-                          {actionLoading === "ai" ? (
-                            <Loader2 className="animate-spin" size={18} />
-                          ) : (
-                            <Sparkles size={18} />
-                          )}
-                          Run AI
-                        </button>
+                     {selectedSubmission.status === "APPROVED" ? (
+  <div className="mt-5">
+    <button
+      onClick={handleGenerateCertificate}
+      className="primary-btn inline-flex w-full justify-center gap-2"
+      disabled={Boolean(actionLoading)}
+    >
+      {actionLoading === "certificate" ? (
+        <Loader2 className="animate-spin" size={18} />
+      ) : (
+        <Award size={18} />
+      )}
+      Generate Certificate
+    </button>
+  </div>
+) : (
+                        <div className="mt-5 grid gap-4 md:grid-cols-2">
+                          <button
+                            onClick={handleRunAi}
+                            className="secondary-btn inline-flex justify-center gap-2"
+                            disabled={Boolean(actionLoading)}
+                          >
+                            {actionLoading === "ai" ? (
+                              <Loader2 className="animate-spin" size={18} />
+                            ) : (
+                              <Sparkles size={18} />
+                            )}
+                            Run AI
+                          </button>
 
-                        <button
-                          onClick={handleApprove}
-                          className="primary-btn inline-flex justify-center gap-2"
-                          disabled={Boolean(actionLoading)}
-                        >
-                          {actionLoading === "approve" ? (
-                            <Loader2 className="animate-spin" size={18} />
-                          ) : (
-                            <ShieldCheck size={18} />
-                          )}
-                          Approve
-                        </button>
+                          <button
+                            onClick={handleApprove}
+                            className="primary-btn inline-flex justify-center gap-2"
+                            disabled={Boolean(actionLoading)}
+                          >
+                            {actionLoading === "approve" ? (
+                              <Loader2 className="animate-spin" size={18} />
+                            ) : (
+                              <ShieldCheck size={18} />
+                            )}
+                            Approve
+                          </button>
 
-                        <button
-                          onClick={handleReject}
-                          className="secondary-btn inline-flex justify-center gap-2"
-                          disabled={Boolean(actionLoading)}
-                        >
-                          Reject
-                        </button>
-
-                        <button
-                          onClick={handleGenerateCertificate}
-                          className="primary-btn inline-flex justify-center gap-2"
-                          disabled={Boolean(actionLoading)}
-                        >
-                          {actionLoading === "certificate" ? (
-                            <Loader2 className="animate-spin" size={18} />
-                          ) : (
-                            <Award size={18} />
-                          )}
-                          Generate Certificate
-                        </button>
-                      </div>
+                          <button
+                            onClick={handleReject}
+                            className="secondary-btn inline-flex justify-center gap-2 md:col-span-2"
+                            disabled={Boolean(actionLoading)}
+                          >
+                            {actionLoading === "reject" ? (
+                              <Loader2 className="animate-spin" size={18} />
+                            ) : null}
+                            Reject
+                          </button>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <p className="mt-5 rounded-2xl bg-slate-950/60 p-4 text-slate-400">
