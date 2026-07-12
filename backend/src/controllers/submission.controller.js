@@ -1,8 +1,9 @@
-import { runAiAssessmentForSubmission } from "../services/aiAssessment.service.js";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { Challenge } from "../models/Challenge.js";
 import { Submission } from "../models/Submission.js";
+import { runAiAssessmentForSubmission } from "../services/aiAssessment.service.js";
+import { sendSubmissionDecisionEmail } from "../services/email.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -35,7 +36,11 @@ const createSubmissionSchema = z.object({
     .string()
     .trim()
     .min(30, "Explanation must have at least 30 characters"),
-  notes: z.string().trim().max(500, "Notes cannot exceed 500 characters").optional(),
+  notes: z
+    .string()
+    .trim()
+    .max(500, "Notes cannot exceed 500 characters")
+    .optional(),
 });
 
 const updateSubmissionStatusSchema = z.object({
@@ -69,7 +74,11 @@ export const createSubmission = asyncHandler(async (req, res) => {
   const challenge = await Challenge.findById(validatedData.challengeId);
 
   if (!challenge || !challenge.isActive) {
-    throw new ApiError(404, "Challenge not found.", "CHALLENGE_NOT_FOUND");
+    throw new ApiError(
+      404,
+      "Challenge not found.",
+      "CHALLENGE_NOT_FOUND"
+    );
   }
 
   const existingSubmission = await Submission.findOne({
@@ -103,7 +112,9 @@ export const createSubmission = asyncHandler(async (req, res) => {
       requestedBy: null,
     });
   } catch (error) {
-    console.error(`Automatic AI assessment failed: ${error.message}`);
+    console.error(
+      `Automatic AI assessment failed: ${error.message}`
+    );
   }
 
   const populatedSubmission = await Submission.findById(submission._id)
@@ -152,7 +163,11 @@ export const getAllSubmissions = asyncHandler(async (req, res) => {
     ];
 
     if (!allowedStatuses.includes(req.query.status)) {
-      throw new ApiError(400, "Invalid submission status.", "INVALID_STATUS");
+      throw new ApiError(
+        400,
+        "Invalid submission status.",
+        "INVALID_STATUS"
+      );
     }
 
     filter.status = req.query.status;
@@ -169,7 +184,11 @@ export const getAllSubmissions = asyncHandler(async (req, res) => {
   }
 
   if (req.query.studentId) {
-    checkObjectId(req.query.studentId, "Invalid student ID.", "INVALID_STUDENT_ID");
+    checkObjectId(
+      req.query.studentId,
+      "Invalid student ID.",
+      "INVALID_STUDENT_ID"
+    );
 
     filter.studentId = req.query.studentId;
   }
@@ -196,13 +215,18 @@ export const getAllSubmissions = asyncHandler(async (req, res) => {
 export const getSubmissionById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  checkObjectId(id, "Invalid submission ID.", "INVALID_SUBMISSION_ID");
+  checkObjectId(
+    id,
+    "Invalid submission ID.",
+    "INVALID_SUBMISSION_ID"
+  );
 
   const submission = await Submission.findById(id)
     .populate("studentId", "name email role")
     .populate({
       path: "challengeId",
-      select: "title instructions difficulty deadlineDays requiredEvidence skillId",
+      select:
+        "title instructions difficulty deadlineDays requiredEvidence skillId",
       populate: {
         path: "skillId",
         select: "title description level requiredTags",
@@ -211,11 +235,16 @@ export const getSubmissionById = asyncHandler(async (req, res) => {
     .populate("reviewedBy", "name email role");
 
   if (!submission) {
-    throw new ApiError(404, "Submission not found.", "SUBMISSION_NOT_FOUND");
+    throw new ApiError(
+      404,
+      "Submission not found.",
+      "SUBMISSION_NOT_FOUND"
+    );
   }
 
   const isOwner =
-    submission.studentId._id.toString() === req.user._id.toString();
+    submission.studentId._id.toString() ===
+    req.user._id.toString();
 
   if (!isOwner && !isAdminUser(req.user)) {
     throw new ApiError(
@@ -231,41 +260,95 @@ export const getSubmissionById = asyncHandler(async (req, res) => {
   });
 });
 
-export const updateSubmissionStatus = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+export const updateSubmissionStatus = asyncHandler(
+  async (req, res) => {
+    const { id } = req.params;
 
-  checkObjectId(id, "Invalid submission ID.", "INVALID_SUBMISSION_ID");
+    checkObjectId(
+      id,
+      "Invalid submission ID.",
+      "INVALID_SUBMISSION_ID"
+    );
 
-  const validatedData = updateSubmissionStatusSchema.parse(req.body);
+    const validatedData =
+      updateSubmissionStatusSchema.parse(req.body);
 
-  const submission = await Submission.findById(id);
+    const submission = await Submission.findById(id);
 
-  if (!submission) {
-    throw new ApiError(404, "Submission not found.", "SUBMISSION_NOT_FOUND");
+    if (!submission) {
+      throw new ApiError(
+        404,
+        "Submission not found.",
+        "SUBMISSION_NOT_FOUND"
+      );
+    }
+
+    const previousStatus = submission.status;
+
+    submission.status = validatedData.status;
+    submission.reviewNote = validatedData.reviewNote || "";
+    submission.reviewedBy = req.user._id;
+    submission.reviewedAt = new Date();
+
+    await submission.save();
+
+    const updatedSubmission = await Submission.findById(
+      submission._id
+    )
+      .populate("studentId", "name email role")
+      .populate({
+        path: "challengeId",
+        select: "title difficulty skillId",
+        populate: {
+          path: "skillId",
+          select: "title level",
+        },
+      })
+      .populate("reviewedBy", "name email role");
+
+    let emailResult = {
+      skipped: true,
+      reason: "No decision email was required",
+    };
+
+    const isDecisionStatus = ["APPROVED", "REJECTED"].includes(
+      validatedData.status
+    );
+
+    const statusChanged =
+      previousStatus !== validatedData.status;
+
+    if (isDecisionStatus && statusChanged) {
+      try {
+        emailResult = await sendSubmissionDecisionEmail({
+          to: updatedSubmission?.studentId?.email,
+          studentName: updatedSubmission?.studentId?.name,
+          challengeTitle:
+            updatedSubmission?.challengeId?.title,
+          skillTitle:
+            updatedSubmission?.challengeId?.skillId?.title,
+          status: updatedSubmission.status,
+          reviewNote: updatedSubmission.reviewNote,
+        });
+      } catch (emailError) {
+        console.error(
+          "Submission decision email failed:",
+          emailError.message
+        );
+
+        emailResult = {
+          skipped: true,
+          reason: "Email sending failed",
+          error: emailError.message,
+        };
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Submission status updated successfully.",
+      submission: updatedSubmission,
+      email: emailResult,
+    });
   }
-
-  submission.status = validatedData.status;
-  submission.reviewNote = validatedData.reviewNote || "";
-  submission.reviewedBy = req.user._id;
-  submission.reviewedAt = new Date();
-
-  await submission.save();
-
-  const updatedSubmission = await Submission.findById(submission._id)
-    .populate("studentId", "name email role")
-    .populate({
-      path: "challengeId",
-      select: "title difficulty skillId",
-      populate: {
-        path: "skillId",
-        select: "title level",
-      },
-    })
-    .populate("reviewedBy", "name email role");
-
-  res.status(200).json({
-    success: true,
-    message: "Submission status updated successfully.",
-    submission: updatedSubmission,
-  });
-});
+);

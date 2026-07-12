@@ -47,6 +47,19 @@ const challengeSchema = new mongoose.Schema(
       min: [1, "Deadline must be at least 1 day"],
       max: [90, "Deadline cannot exceed 90 days"],
     },
+
+    assignedStudentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    source: {
+      type: String,
+      enum: ["MANUAL", "AI_PERSONALIZED"],
+      default: "MANUAL",
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -63,5 +76,6 @@ const challengeSchema = new mongoose.Schema(
 );
 
 challengeSchema.index({ skillId: 1, difficulty: 1 });
+challengeSchema.index({ assignedStudentId: 1, isActive: 1 });
 
 export const Challenge = mongoose.model("Challenge", challengeSchema);

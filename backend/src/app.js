@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import paymentRoutes from "./routes/payment.routes.js";
 import morgan from "morgan";
 import { env } from "./config/env.js";
 import authRoutes from "./routes/auth.routes.js";
@@ -39,6 +40,7 @@ app.use("/api/challenges", challengeRoutes);
 app.use("/api/submissions", submissionRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/certificates", certificateRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
