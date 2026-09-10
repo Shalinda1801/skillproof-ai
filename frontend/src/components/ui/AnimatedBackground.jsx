@@ -1,17 +1,28 @@
 const AnimatedBackground = () => {
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-slate-950">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.28),transparent_35%),radial-gradient(circle_at_top_right,rgba(124,58,237,0.25),transparent_35%),radial-gradient(circle_at_bottom,rgba(34,211,238,0.12),transparent_35%)]" />
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#f7f9fc]">
+      {/* Main Aurora wash */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_5%_8%,rgba(59,130,246,0.14),transparent_30%),radial-gradient(circle_at_92%_10%,rgba(139,92,246,0.12),transparent_30%),radial-gradient(circle_at_50%_90%,rgba(34,184,207,0.09),transparent_34%)]" />
 
-      <div className="hero-grid absolute inset-0 opacity-50" />
+      {/* Animated grid */}
+      <div className="hero-grid absolute inset-0 opacity-45" />
 
-      <div className="float-3d absolute left-[6%] top-[18%] h-72 w-72 rounded-full bg-blue-500/30 blur-[100px]" />
-      <div className="float-3d absolute right-[8%] top-[20%] h-80 w-80 rounded-full bg-purple-500/30 blur-[110px]" />
-      <div className="float-3d absolute bottom-[8%] left-[38%] h-80 w-80 rounded-full bg-cyan-400/15 blur-[120px]" />
+      {/* Soft moving aurora blobs */}
+      <div className="float-3d absolute left-[-8%] top-[12%] h-[420px] w-[420px] rounded-full bg-blue-400/15 blur-[120px]" />
 
-      <div className="absolute left-[15%] top-[30%] h-2 w-2 rounded-full bg-cyan-300/70 shadow-[0_0_25px_rgba(103,232,249,0.9)]" />
-      <div className="absolute right-[22%] top-[38%] h-2 w-2 rounded-full bg-purple-300/70 shadow-[0_0_25px_rgba(216,180,254,0.9)]" />
-      <div className="absolute bottom-[22%] left-[48%] h-2 w-2 rounded-full bg-blue-300/70 shadow-[0_0_25px_rgba(147,197,253,0.9)]" />
+      <div className="float-3d absolute right-[-8%] top-[16%] h-[440px] w-[440px] rounded-full bg-violet-400/15 blur-[125px]" />
+
+      <div className="float-3d absolute bottom-[2%] left-[34%] h-[420px] w-[420px] rounded-full bg-cyan-300/10 blur-[130px]" />
+
+      {/* Tiny light particles */}
+      <div className="absolute left-[15%] top-[27%] h-2 w-2 rounded-full bg-blue-400/70 shadow-[0_0_24px_rgba(59,130,246,0.55)]" />
+
+      <div className="absolute right-[20%] top-[37%] h-2 w-2 rounded-full bg-violet-400/70 shadow-[0_0_24px_rgba(139,92,246,0.5)]" />
+
+      <div className="absolute bottom-[22%] left-[48%] h-2 w-2 rounded-full bg-cyan-400/60 shadow-[0_0_24px_rgba(34,184,207,0.5)]" />
+
+      {/* Light overlay keeps content readable */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-white/35" />
     </div>
   );
 };

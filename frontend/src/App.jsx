@@ -50,7 +50,9 @@ const App = () => {
       <CertificateView />
     </ProtectedRoute>
   }
-/>      <Route path="/pricing" element={<Pricing />} />
+/>
+
+<Route path="/pricing" element={<Pricing />} />
       <Route path="/checkout/:planId" element={<Checkout />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />

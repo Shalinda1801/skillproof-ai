@@ -1,7 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import axiosClient from "../api/axiosClient";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-const AuthContext = createContext(null);
+import axiosClient from "../api/axiosClient";
+import { AuthContext } from "./auth-context";
+
 
 const getDashboardPath = (role) => {
   if (role === "ADMIN" || role === "SUPER_ADMIN") {
@@ -15,87 +21,271 @@ const getDashboardPath = (role) => {
   return "/student/dashboard";
 };
 
+
+
 export const AuthProvider = ({ children }) => {
+
+
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("skillproof_user");
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
 
-  const [token, setToken] = useState(() => {
-    return localStorage.getItem("skillproof_token");
-  });
-
-  const [loading, setLoading] = useState(false);
-
-  const saveAuth = (authData) => {
-    localStorage.setItem("skillproof_token", authData.token);
-    localStorage.setItem("skillproof_user", JSON.stringify(authData.user));
-    setToken(authData.token);
-    setUser(authData.user);
-  };
-
-  const login = async (formData) => {
-    const response = await axiosClient.post("/auth/login", formData);
-    saveAuth(response.data);
-    return response.data.user;
-  };
-
-  const register = async (formData) => {
-    const response = await axiosClient.post("/auth/register", formData);
-    saveAuth(response.data);
-    return response.data.user;
-  };
-
-  const logout = () => {
-    localStorage.removeItem("skillproof_token");
-    localStorage.removeItem("skillproof_user");
-    setToken(null);
-    setUser(null);
-  };
-
-  const refreshMe = async () => {
-    if (!token) return;
+    const data = localStorage.getItem(
+      "skillproof_user"
+    );
 
     try {
-      setLoading(true);
-      const response = await axiosClient.get("/auth/me");
-      localStorage.setItem("skillproof_user", JSON.stringify(response.data.user));
-      setUser(response.data.user);
+      return data ? JSON.parse(data) : null;
     } catch {
-      logout();
-    } finally {
-      setLoading(false);
+      return null;
     }
-  };
 
-  useEffect(() => {
-    refreshMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
-  const value = useMemo(
-    () => ({
-      user,
-      token,
-      loading,
-      isAuthenticated: Boolean(token && user),
-      login,
-      register,
-      logout,
-      getDashboardPath,
-    }),
-    [user, token, loading]
+
+
+  const [token, setToken] = useState(() =>
+    localStorage.getItem(
+      "skillproof_token"
+    )
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
 
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  const [validatedToken, setValidatedToken] =
+    useState(null);
 
-  return context;
+
+
+  const loading =
+    Boolean(
+      token &&
+      validatedToken !== token
+    );
+
+
+
+  const saveAuth = useCallback((data)=>{
+
+    localStorage.setItem(
+      "skillproof_token",
+      data.token
+    );
+
+
+    localStorage.setItem(
+      "skillproof_user",
+      JSON.stringify(data.user)
+    );
+
+
+    setToken(data.token);
+    setUser(data.user);
+
+
+  },[]);
+
+
+
+
+  const login = useCallback(async(data)=>{
+
+
+    const response =
+      await axiosClient.post(
+        "/auth/login",
+        data
+      );
+
+
+    saveAuth(response.data);
+
+
+    return response.data.user;
+
+
+  },[saveAuth]);
+
+
+
+
+
+  const register = useCallback(async(data)=>{
+
+
+    const response =
+      await axiosClient.post(
+        "/auth/register",
+        data
+      );
+
+
+    saveAuth(response.data);
+
+
+    return response.data.user;
+
+
+  },[saveAuth]);
+
+
+
+
+
+
+  const logout = useCallback(()=>{
+
+
+    localStorage.removeItem(
+      "skillproof_token"
+    );
+
+
+    localStorage.removeItem(
+      "skillproof_user"
+    );
+
+
+    setToken(null);
+    setUser(null);
+    setValidatedToken(null);
+
+
+  },[]);
+
+
+
+
+
+
+
+  useEffect(()=>{
+
+
+    if(!token) return;
+
+
+    let active = true;
+
+
+
+    const refreshMe = async()=>{
+
+
+      try{
+
+
+        const response =
+          await axiosClient.get(
+            "/auth/me"
+          );
+
+
+
+        if(!active) return;
+
+
+
+        setUser(
+          response.data.user
+        );
+
+
+
+        localStorage.setItem(
+          "skillproof_user",
+          JSON.stringify(
+            response.data.user
+          )
+        );
+
+
+
+        setValidatedToken(token);
+
+
+
+      }catch{
+
+
+        if(active){
+          logout();
+        }
+
+
+      }
+
+
+    };
+
+
+
+    refreshMe();
+
+
+
+    return ()=>{
+
+      active=false;
+
+    };
+
+
+  },[token,logout]);
+
+
+
+
+
+
+
+  const value = useMemo(()=>({
+
+
+    user,
+
+    token,
+
+    loading,
+
+
+    isAuthenticated:
+      Boolean(token && user),
+
+
+    login,
+
+    register,
+
+    logout,
+
+    getDashboardPath,
+
+
+  }),[
+
+    user,
+    token,
+    loading,
+    login,
+    register,
+    logout
+
+  ]);
+
+
+
+
+
+
+
+  return (
+
+    <AuthContext.Provider value={value}>
+
+      {children}
+
+    </AuthContext.Provider>
+
+  );
+
+
 };
